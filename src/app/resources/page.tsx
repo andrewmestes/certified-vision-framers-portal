@@ -1,68 +1,163 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { getCurrentFramer, logout } from "@/lib/auth";
 import { Resource, ResourceCategory } from "@/types";
+
+type Framer = {
+  id: string;
+  email: string;
+  name: string;
+  is_admin: boolean;
+};
 
 export default function ResourcesPage() {
   const [resources, setResources] = useState<Resource[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState<ResourceCategory | "all">("all");
+  const [framer, setFramer] = useState<Framer | null>(null);
+  const [status, setStatus] = useState<"checking" | "denied" | "ready">(
+    "checking"
+  );
+  const [selectedCategory, setSelectedCategory] = useState<
+    ResourceCategory | "all"
+  >("all");
+  const router = useRouter();
 
-  const categories: ResourceCategory[] = ["handout", "guide", "video", "template", "resource"];
+  const categories: ResourceCategory[] = [
+    "handout",
+    "guide",
+    "video",
+    "template",
+    "resource",
+  ];
 
   useEffect(() => {
-    loadResources();
-  }, []);
+    async function init() {
+      // Must be signed in
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-  async function loadResources() {
-    try {
-      let query = supabase
+      if (!user) {
+        router.replace("/auth/login");
+        return;
+      }
+
+      // Must be on the certified framers allowlist
+      const currentFramer = (await getCurrentFramer()) as Framer | null;
+
+      if (!currentFramer) {
+        setStatus("denied");
+        return;
+      }
+
+      setFramer(currentFramer);
+
+      const { data, error } = await supabase
         .from("resources")
         .select("*")
         .eq("is_published", true)
         .order("created_at", { ascending: false });
 
-      if (selectedCategory !== "all") {
-        query = query.eq("category", selectedCategory);
+      if (error) {
+        console.error("Error loading resources:", error);
+      } else {
+        setResources(data || []);
       }
 
-      const { data, error } = await query;
-      if (error) throw error;
-      setResources(data || []);
-    } catch (error) {
-      console.error("Error loading resources:", error);
-    } finally {
-      setLoading(false);
+      setStatus("ready");
     }
+
+    init();
+  }, [router]);
+
+  async function handleSignOut() {
+    await logout();
+    router.replace("/auth/login");
   }
 
   async function handleDownload(resource: Resource) {
-    try {
-      // Log the access
-      await supabase.from("resource_access_logs").insert({
-        framer_id: (await supabase.auth.getUser()).data.user?.id || "",
-        resource_id: resource.id,
-        action: "download",
-      });
+    if (!framer) return;
 
-      // Open the file
-      window.open(resource.file_url, "_blank");
-    } catch (error) {
+    // Log against the framer record, not the auth user id
+    const { error } = await supabase.from("resource_access_logs").insert({
+      framer_id: framer.id,
+      resource_id: resource.id,
+      action: "download",
+    });
+
+    if (error) {
       console.error("Error logging access:", error);
     }
+
+    window.open(resource.file_url, "_blank", "noopener,noreferrer");
+  }
+
+  const visible =
+    selectedCategory === "all"
+      ? resources
+      : resources.filter((r) => r.category === selectedCategory);
+
+  if (status === "checking") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <p className="text-gray-600">Checking your access...</p>
+      </div>
+    );
+  }
+
+  if (status === "denied") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <div className="w-full max-w-md bg-white rounded-lg shadow-md p-8 text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-3">
+            Access pending
+          </h1>
+          <p className="text-gray-600 mb-6">
+            Your account was created, but your email is not on the Certified
+            Vision Framers list yet. Once an admin adds you, sign in again to
+            get access.
+          </p>
+          <button
+            onClick={handleSignOut}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition"
+          >
+            Sign out
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <h1 className="text-3xl font-bold text-gray-900">
-            Vision Framers Resources
-          </h1>
-          <p className="text-gray-600 mt-2">
-            Access handouts, guides, videos, and more
-          </p>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Vision Framers Resources
+            </h1>
+            <p className="text-gray-600 mt-2">
+              Access handouts, guides, videos, and more
+            </p>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            {framer?.is_admin && (
+              <a
+                href="/admin"
+                className="text-sm font-medium text-blue-600 hover:underline"
+              >
+                Admin
+              </a>
+            )}
+            <button
+              onClick={handleSignOut}
+              className="text-sm font-medium text-gray-600 hover:text-gray-900"
+            >
+              Sign out
+            </button>
+          </div>
         </div>
       </header>
 
@@ -100,17 +195,13 @@ export default function ResourcesPage() {
         </div>
 
         {/* Resources Grid */}
-        {loading ? (
-          <div className="text-center py-12">
-            <p className="text-gray-600">Loading resources...</p>
-          </div>
-        ) : resources.length === 0 ? (
+        {visible.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-600">No resources found</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {resources.map((resource) => (
+            {visible.map((resource) => (
               <div
                 key={resource.id}
                 className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition"

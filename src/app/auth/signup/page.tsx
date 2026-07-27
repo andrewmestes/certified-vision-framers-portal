@@ -30,21 +30,8 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, name }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || "Signup failed");
-        return;
-      }
-
-      // After signup, redirect to login
-      router.push("/auth/login?message=Account created. Please sign in.");
+      await signupWithEmail(email, password, name);
+      router.push("/resources");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Signup failed");
     } finally {
