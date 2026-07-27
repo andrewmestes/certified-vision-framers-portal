@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     // Check if user is admin
     const { data: framer } = await supabaseAdmin
       .from("certified_framers")
-      .select("is_admin")
+      .select("id, is_admin")
       .eq("email", user.email)
       .single();
 
