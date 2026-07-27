@@ -2,11 +2,19 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { isAdmin } from "@/lib/auth";
+import { getCurrentFramer, logout } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
+import PortalHeader from "@/components/PortalHeader";
+
+type Framer = {
+  id: string;
+  email: string;
+  name: string;
+  is_admin: boolean;
+};
 
 export default function AdminDashboard() {
-  const [authorized, setAuthorized] = useState(false);
+  const [framer, setFramer] = useState<Framer | null>(null);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     framers: 0,
@@ -16,124 +24,104 @@ export default function AdminDashboard() {
   const router = useRouter();
 
   useEffect(() => {
-    checkAuth();
-  }, []);
+    async function init() {
+      const current = (await getCurrentFramer()) as Framer | null;
 
-  async function checkAuth() {
-    const isAdminUser = await isAdmin();
-    if (!isAdminUser) {
-      router.push("/resources");
-      return;
-    }
-    setAuthorized(true);
-    loadStats();
-  }
+      if (!current?.is_admin) {
+        router.replace("/resources");
+        return;
+      }
 
-  async function loadStats() {
-    try {
-      const [framer, resource, logs] = await Promise.all([
-        supabase.from("certified_framers").select("count()", { count: "exact" }),
-        supabase.from("resources").select("count()", { count: "exact" }),
+      setFramer(current);
+
+      const [framers, resources, logs] = await Promise.all([
+        supabase
+          .from("certified_framers")
+          .select("*", { count: "exact", head: true }),
+        supabase.from("resources").select("*", { count: "exact", head: true }),
         supabase
           .from("resource_access_logs")
-          .select("count()", { count: "exact" }),
+          .select("*", { count: "exact", head: true }),
       ]);
 
       setStats({
-        framers: framer.count || 0,
-        resources: resource.count || 0,
+        framers: framers.count || 0,
+        resources: resources.count || 0,
         accessLogs: logs.count || 0,
       });
-    } catch (error) {
-      console.error("Error loading stats:", error);
-    } finally {
       setLoading(false);
     }
+
+    init();
+  }, [router]);
+
+  async function handleSignOut() {
+    await logout();
+    router.replace("/auth/login");
   }
 
-  if (!authorized || loading) {
+  if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-gray-600">Loading...</p>
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="mx-auto mb-4 h-1.5 w-24 rounded-full bg-runfree-grad" />
+          <p className="text-sm text-gray-500">Loading…</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-          <p className="text-gray-600 mt-2">
-            Manage resources, users, and settings
-          </p>
-        </div>
-      </header>
+      <PortalHeader
+        framer={framer}
+        onSignOut={handleSignOut}
+        title="Admin"
+        subtitle="Manage resources and certified framers"
+        backHref="/resources"
+        backLabel="← Resources"
+      />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
-              Certified Framers
-            </h3>
-            <p className="text-3xl font-bold text-gray-900 mt-2">
-              {stats.framers}
-            </p>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
-              Resources
-            </h3>
-            <p className="text-3xl font-bold text-gray-900 mt-2">
-              {stats.resources}
-            </p>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
-              Access Logs
-            </h3>
-            <p className="text-3xl font-bold text-gray-900 mt-2">
-              {stats.accessLogs}
-            </p>
-          </div>
+      <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <div className="mb-10 grid grid-cols-1 gap-6 md:grid-cols-3">
+          <StatCard label="Certified Framers" value={stats.framers} />
+          <StatCard label="Resources" value={stats.resources} />
+          <StatCard label="Downloads Logged" value={stats.accessLogs} />
         </div>
 
-        {/* Quick Actions */}
-        <div className="bg-white rounded-lg shadow-md p-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">
-            Quick Actions
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200">
+          <div className="h-1.5 bg-runfree-grad" />
+          <div className="p-8">
+            <h2 className="font-display text-xl font-bold text-runfree-ink">
+              Add a resource
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-gray-600">
+              Paste a Google Drive link. The portal stores the file&rsquo;s ID
+              rather than a copy, so whenever you edit that file in Drive, framers
+              get the updated version the next time they open it.
+            </p>
             <a
               href="/admin/resources/new"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition text-center"
+              className="mt-6 inline-block rounded-lg bg-runfree-grad px-6 py-2.5 font-semibold text-white transition hover:opacity-90"
             >
               Add New Resource
-            </a>
-            <a
-              href="/admin/framers"
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-medium transition text-center"
-            >
-              Manage Certified Framers
-            </a>
-            <a
-              href="/admin/resources"
-              className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition text-center"
-            >
-              View All Resources
-            </a>
-            <a
-              href="/admin/logs"
-              className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-medium transition text-center"
-            >
-              View Access Logs
             </a>
           </div>
         </div>
       </main>
+    </div>
+  );
+}
+
+function StatCard({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-200">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+        {label}
+      </h3>
+      <p className="mt-2 font-display text-4xl font-extrabold text-runfree-ink">
+        {value}
+      </p>
     </div>
   );
 }
