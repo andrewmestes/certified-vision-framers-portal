@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { getCurrentFramer, logout } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import PortalHeader from "@/components/PortalHeader";
@@ -13,7 +14,12 @@ type Framer = {
   is_admin: boolean;
 };
 
-type ModuleSummary = { id: string; name: string; files: unknown[] };
+type ModuleSummary = {
+  id: string;
+  name: string;
+  order: number;
+  files: unknown[];
+};
 
 export default function AdminDashboard() {
   const [framer, setFramer] = useState<Framer | null>(null);
@@ -122,10 +128,19 @@ export default function AdminDashboard() {
               {modules.map((m) => (
                 <div
                   key={m.id}
-                  className="flex items-center justify-between rounded-lg bg-gray-50 px-4 py-2.5 text-sm"
+                  className="flex items-center gap-3 rounded-lg bg-gray-50 px-4 py-2.5 text-sm"
                 >
+                  {m.order >= 1 && m.order <= 6 && (
+                    <Image
+                      src={`/brand/modules/${m.order}.png`}
+                      alt=""
+                      width={24}
+                      height={24}
+                      className="h-6 w-6 shrink-0 object-contain"
+                    />
+                  )}
                   <span className="font-medium text-runfree-ink">{m.name}</span>
-                  <span className="text-gray-500">
+                  <span className="ml-auto text-gray-500">
                     {m.files.length} {m.files.length === 1 ? "file" : "files"}
                   </span>
                 </div>

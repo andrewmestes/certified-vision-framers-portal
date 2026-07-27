@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { getCurrentFramer, logout } from "@/lib/auth";
 import PortalHeader from "@/components/PortalHeader";
@@ -25,8 +26,15 @@ type PortalFile = {
 type PortalModule = {
   id: string;
   name: string;
+  /** Leading number of the Drive folder — also picks the Pivvot icon. */
+  order: number;
   files: PortalFile[];
 };
+
+/** Pivvot process icons, keyed by module number (RUNFREE-LOGO-PACK, Blue PNG). */
+function moduleIcon(order: number): string | null {
+  return order >= 1 && order <= 6 ? `/brand/modules/${order}.png` : null;
+}
 
 function prettySize(bytes: number | null) {
   if (!bytes) return "";
@@ -240,6 +248,7 @@ export default function ResourcesPage() {
                 key={m.id}
                 active={activeModule === m.id}
                 onClick={() => setActiveModule(m.id)}
+                icon={moduleIcon(m.order)}
               >
                 {m.name}
               </FilterChip>
@@ -262,7 +271,16 @@ export default function ResourcesPage() {
           <div className="space-y-12">
             {shown.map((mod) => (
               <section key={mod.id}>
-                <div className="mb-4 flex items-baseline gap-3">
+                <div className="mb-4 flex items-center gap-3">
+                  {moduleIcon(mod.order) && (
+                    <Image
+                      src={moduleIcon(mod.order) as string}
+                      alt=""
+                      width={44}
+                      height={44}
+                      className="h-11 w-11 shrink-0 object-contain"
+                    />
+                  )}
                   <h2 className="font-display text-xl font-bold text-runfree-ink">
                     {mod.name}
                   </h2>
@@ -311,20 +329,39 @@ function FilterChip({
   active,
   onClick,
   children,
+  icon,
 }: {
   active: boolean;
   onClick: () => void;
   children: React.ReactNode;
+  icon?: string | null;
 }) {
   return (
     <button
       onClick={onClick}
-      className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+      className={`flex items-center gap-2 rounded-full py-2 text-sm font-medium transition ${
+        icon ? "pl-2 pr-4" : "px-4"
+      } ${
         active
           ? "bg-runfree-grad text-white shadow-sm"
           : "bg-white text-gray-600 ring-1 ring-gray-200 hover:ring-runfree-magenta/40"
       }`}
     >
+      {icon && (
+        <span
+          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+            active ? "bg-white/90" : "bg-transparent"
+          }`}
+        >
+          <Image
+            src={icon}
+            alt=""
+            width={20}
+            height={20}
+            className="h-5 w-5 object-contain"
+          />
+        </span>
+      )}
       {children}
     </button>
   );
