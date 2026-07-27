@@ -32,8 +32,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const fieldId = process.env.GHL_CUSTOM_FIELD_ID;
+    if (!fieldId) {
+      return NextResponse.json<ApiResponse>(
+        { success: false, error: "GHL_CUSTOM_FIELD_ID not configured" },
+        { status: 500 }
+      );
+    }
+
     // Check if the custom field indicates certification
-    const isCertified = payload.customField?.[process.env.GHL_CUSTOM_FIELD_ID] === true;
+    const isCertified = payload.customField?.[fieldId] === true;
 
     if (!isCertified) {
       return NextResponse.json<ApiResponse>(
