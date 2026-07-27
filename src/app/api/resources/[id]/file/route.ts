@@ -90,10 +90,7 @@ export async function GET(
       );
     }
 
-    // 5. Fetch the CURRENT bytes from Drive
-    const file = await fetchDriveFile(resource.google_drive_id);
-
-    // 6. Record the access (best effort — never block the download)
+    // 5. Record the access before streaming (best effort — never block it)
     await supabaseAdmin
       .from("resource_access_logs")
       .insert({
@@ -106,7 +103,10 @@ export async function GET(
         () => undefined
       );
 
-    return new NextResponse(new Uint8Array(file.body), {
+    // 6. Stream the CURRENT bytes from Drive
+    const file = await fetchDriveFile(resource.google_drive_id);
+
+    return new NextResponse(file.body, {
       status: 200,
       headers: {
         "Content-Type": file.mimeType,

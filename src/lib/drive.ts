@@ -1,4 +1,5 @@
 import { google } from "googleapis";
+import { Readable } from "node:stream";
 
 /**
  * Google Drive access via a service account.
@@ -66,15 +67,21 @@ function getDriveClient() {
 }
 
 export type DriveFile = {
-  body: Buffer;
+  /** Web stream, so large files aren't buffered in the function's memory. */
+  body: ReadableStream;
   mimeType: string;
   filename: string;
 };
 
 /**
- * Fetch the current contents of a Drive file.
+ * Fetch the current contents of a Drive file as a stream.
+ *
+ * Streaming matters here: buffering the whole file would blow past the
+ * serverless response-body limit on anything large (the certification
+ * notebook alone is ~36MB). Streamed responses aren't subject to that cap.
+ *
  * Google Docs/Slides/Sheets are exported (Docs and Slides to PDF); everything
- * else is streamed as-is.
+ * else is passed through untouched.
  */
 export async function fetchDriveFile(fileId: string): Promise<DriveFile> {
   const drive = getDriveClient();
@@ -92,11 +99,11 @@ export async function fetchDriveFile(fileId: string): Promise<DriveFile> {
   if (exportTarget) {
     const res = await drive.files.export(
       { fileId, mimeType: exportTarget.mime },
-      { responseType: "arraybuffer" }
+      { responseType: "stream" }
     );
 
     return {
-      body: Buffer.from(res.data as ArrayBuffer),
+      body: Readable.toWeb(res.data as Readable) as ReadableStream,
       mimeType: exportTarget.mime,
       filename: `${name}.${exportTarget.ext}`,
     };
@@ -104,11 +111,11 @@ export async function fetchDriveFile(fileId: string): Promise<DriveFile> {
 
   const res = await drive.files.get(
     { fileId, alt: "media", supportsAllDrives: true },
-    { responseType: "arraybuffer" }
+    { responseType: "stream" }
   );
 
   return {
-    body: Buffer.from(res.data as ArrayBuffer),
+    body: Readable.toWeb(res.data as Readable) as ReadableStream,
     mimeType: sourceMime,
     filename: name,
   };
