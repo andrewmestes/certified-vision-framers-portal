@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getCurrentFramer, logout } from "@/lib/auth";
-import { Resource, ResourceCategory } from "@/types";
 import PortalHeader from "@/components/PortalHeader";
 
 type Framer = {
@@ -14,28 +13,61 @@ type Framer = {
   is_admin: boolean;
 };
 
-const CATEGORY_LABEL: Record<ResourceCategory, string> = {
-  handout: "Handouts",
-  guide: "Guides",
-  video: "Videos",
-  template: "Templates",
-  resource: "Resources",
+type PortalFile = {
+  id: string;
+  name: string;
+  title: string;
+  mimeType: string;
+  sizeBytes: number | null;
+  modifiedTime: string | null;
 };
 
+type PortalModule = {
+  id: string;
+  name: string;
+  files: PortalFile[];
+};
+
+function prettySize(bytes: number | null) {
+  if (!bytes) return "";
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export default function ResourcesPage() {
-  const [resources, setResources] = useState<Resource[]>([]);
   const [framer, setFramer] = useState<Framer | null>(null);
+  const [modules, setModules] = useState<PortalModule[]>([]);
   const [status, setStatus] = useState<"checking" | "denied" | "ready">(
     "checking"
   );
-  const [selectedCategory, setSelectedCategory] = useState<
-    ResourceCategory | "all"
-  >("all");
+  const [loadError, setLoadError] = useState("");
+  const [query, setQuery] = useState("");
+  const [activeModule, setActiveModule] = useState<string>("all");
   const [opening, setOpening] = useState<string | null>(null);
-  const [openError, setOpenError] = useState<string>("");
+  const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
 
-  const categories = Object.keys(CATEGORY_LABEL) as ResourceCategory[];
+  const loadLibrary = useCallback(async (fresh = false) => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session) return;
+
+    const res = await fetch(`/api/library${fresh ? "?fresh=1" : ""}`, {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+
+    const body = await res.json();
+
+    if (!res.ok) {
+      setLoadError(body.error || "Could not load the library.");
+      return;
+    }
+
+    setLoadError("");
+    setModules(body.modules || []);
+  }, []);
 
   useEffect(() => {
     async function init() {
@@ -48,46 +80,35 @@ export default function ResourcesPage() {
         return;
       }
 
-      const currentFramer = (await getCurrentFramer()) as Framer | null;
+      const current = (await getCurrentFramer()) as Framer | null;
 
-      if (!currentFramer) {
+      if (!current) {
         setStatus("denied");
         return;
       }
 
-      setFramer(currentFramer);
-
-      const { data, error } = await supabase
-        .from("resources")
-        .select("*")
-        .eq("is_published", true)
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error("Error loading resources:", error);
-      } else {
-        setResources(data || []);
-      }
-
+      setFramer(current);
+      await loadLibrary();
       setStatus("ready");
     }
 
     init();
-  }, [router]);
+  }, [router, loadLibrary]);
 
   async function handleSignOut() {
     await logout();
     router.replace("/auth/login");
   }
 
-  /**
-   * Files are fetched through the portal's gated endpoint rather than a public
-   * link, so Drive can keep them private. The endpoint pulls the live bytes,
-   * meaning an edit in Drive shows up here on the very next open.
-   */
-  async function handleOpen(resource: Resource) {
-    setOpening(resource.id);
-    setOpenError("");
+  async function handleRefresh() {
+    setRefreshing(true);
+    await loadLibrary(true);
+    setRefreshing(false);
+  }
+
+  async function handleOpen(file: PortalFile) {
+    setOpening(file.id);
+    setLoadError("");
 
     try {
       const {
@@ -99,13 +120,13 @@ export default function ResourcesPage() {
         return;
       }
 
-      const res = await fetch(`/api/resources/${resource.id}/file`, {
+      const res = await fetch(`/api/library/file/${file.id}`, {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        setOpenError(body.error || "Could not open that file.");
+        setLoadError(body.error || "Could not open that file.");
         return;
       }
 
@@ -114,16 +135,24 @@ export default function ResourcesPage() {
       window.open(url, "_blank", "noopener,noreferrer");
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch {
-      setOpenError("Could not open that file.");
+      setLoadError("Could not open that file.");
     } finally {
       setOpening(null);
     }
   }
 
-  const visible =
-    selectedCategory === "all"
-      ? resources
-      : resources.filter((r) => r.category === selectedCategory);
+  const needle = query.trim().toLowerCase();
+  const shown = modules
+    .filter((m) => activeModule === "all" || m.id === activeModule)
+    .map((m) => ({
+      ...m,
+      files: needle
+        ? m.files.filter((f) => f.title.toLowerCase().includes(needle))
+        : m.files,
+    }))
+    .filter((m) => m.files.length > 0);
+
+  const totalShown = shown.reduce((n, m) => n + m.files.length, 0);
 
   if (status === "checking") {
     return (
@@ -168,80 +197,108 @@ export default function ResourcesPage() {
         framer={framer}
         onSignOut={handleSignOut}
         title="Vision Framers Resources"
-        subtitle="Handouts, facilitator guides, videos, and templates"
+        subtitle="Your certification handouts, straight from the source folder"
       />
 
       <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        {openError && (
+        {loadError && (
           <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {openError}
+            {loadError}
           </div>
         )}
 
-        {/* Category filter */}
-        <div className="mb-8 flex flex-wrap gap-2">
-          <FilterChip
-            active={selectedCategory === "all"}
-            onClick={() => setSelectedCategory("all")}
-          >
-            All
-          </FilterChip>
-          {categories.map((cat) => (
-            <FilterChip
-              key={cat}
-              active={selectedCategory === cat}
-              onClick={() => setSelectedCategory(cat)}
+        {/* Search + module filter */}
+        <div className="mb-8 space-y-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search handouts…"
+              className="w-full max-w-sm rounded-lg border border-gray-300 px-4 py-2.5 text-sm outline-none transition placeholder:text-gray-400 focus:border-runfree-magenta focus:ring-2 focus:ring-runfree-magenta/25"
+            />
+            <span className="text-sm text-gray-500">
+              {totalShown} {totalShown === 1 ? "handout" : "handouts"}
+            </span>
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="ml-auto rounded-lg px-3 py-2 text-sm font-medium text-gray-600 ring-1 ring-gray-200 transition hover:text-runfree-magentaDeep hover:ring-runfree-magenta/40 disabled:opacity-50"
             >
-              {CATEGORY_LABEL[cat]}
+              {refreshing ? "Refreshing…" : "Refresh from Drive"}
+            </button>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <FilterChip
+              active={activeModule === "all"}
+              onClick={() => setActiveModule("all")}
+            >
+              All
             </FilterChip>
-          ))}
+            {modules.map((m) => (
+              <FilterChip
+                key={m.id}
+                active={activeModule === m.id}
+                onClick={() => setActiveModule(m.id)}
+              >
+                {m.name}
+              </FilterChip>
+            ))}
+          </div>
         </div>
 
-        {visible.length === 0 ? (
+        {shown.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-gray-300 bg-white py-16 text-center">
             <p className="font-display text-lg font-semibold text-runfree-ink">
-              Nothing here yet
+              {modules.length === 0 ? "Nothing here yet" : "No matches"}
             </p>
             <p className="mt-2 text-sm text-gray-500">
-              {resources.length === 0
-                ? "Resources added by an admin will appear here."
-                : "No resources in this category."}
+              {modules.length === 0
+                ? "Files added to the shared Drive folder will appear here automatically."
+                : "Try a different search."}
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {visible.map((resource) => (
-              <article
-                key={resource.id}
-                className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200 transition hover:shadow-lg"
-              >
-                <div className="h-1.5 bg-runfree-grad" />
-                <div className="flex flex-1 flex-col p-6">
-                  <span className="mb-3 inline-flex w-fit rounded-full bg-runfree-pink px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-runfree-magentaDeep">
-                    {resource.category}
+          <div className="space-y-12">
+            {shown.map((mod) => (
+              <section key={mod.id}>
+                <div className="mb-4 flex items-baseline gap-3">
+                  <h2 className="font-display text-xl font-bold text-runfree-ink">
+                    {mod.name}
+                  </h2>
+                  <span className="text-sm text-gray-400">
+                    {mod.files.length}
                   </span>
-                  <h3 className="font-display text-lg font-bold leading-snug text-runfree-ink">
-                    {resource.title}
-                  </h3>
-                  {resource.description && (
-                    <p className="mt-2 flex-1 text-sm leading-relaxed text-gray-600">
-                      {resource.description}
-                    </p>
-                  )}
-                  <div className="mt-5 flex items-center justify-between border-t border-gray-100 pt-4">
-                    <span className="text-xs font-medium uppercase tracking-wide text-gray-400">
-                      {resource.file_type}
-                    </span>
-                    <button
-                      onClick={() => handleOpen(resource)}
-                      disabled={opening === resource.id}
-                      className="rounded-lg bg-runfree-grad px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
-                    >
-                      {opening === resource.id ? "Opening…" : "Open"}
-                    </button>
-                  </div>
                 </div>
-              </article>
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {mod.files.map((file) => (
+                    <article
+                      key={file.id}
+                      className="flex flex-col overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-200 transition hover:shadow-md"
+                    >
+                      <div className="h-1 bg-runfree-grad" />
+                      <div className="flex flex-1 flex-col p-5">
+                        <h3 className="font-display text-base font-semibold leading-snug text-runfree-ink">
+                          {file.title}
+                        </h3>
+                        <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3">
+                          <span className="text-xs text-gray-400">
+                            {prettySize(file.sizeBytes)}
+                          </span>
+                          <button
+                            onClick={() => handleOpen(file)}
+                            disabled={opening === file.id}
+                            className="rounded-lg bg-runfree-grad px-4 py-1.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+                          >
+                            {opening === file.id ? "Opening…" : "Open"}
+                          </button>
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
             ))}
           </div>
         )}

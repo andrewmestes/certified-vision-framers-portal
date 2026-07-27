@@ -13,14 +13,14 @@ type Framer = {
   is_admin: boolean;
 };
 
+type ModuleSummary = { id: string; name: string; files: unknown[] };
+
 export default function AdminDashboard() {
   const [framer, setFramer] = useState<Framer | null>(null);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
-    framers: 0,
-    resources: 0,
-    accessLogs: 0,
-  });
+  const [framerCount, setFramerCount] = useState(0);
+  const [downloads, setDownloads] = useState(0);
+  const [modules, setModules] = useState<ModuleSummary[]>([]);
   const router = useRouter();
 
   useEffect(() => {
@@ -34,21 +34,32 @@ export default function AdminDashboard() {
 
       setFramer(current);
 
-      const [framers, resources, logs] = await Promise.all([
+      const [framers, logs] = await Promise.all([
         supabase
           .from("certified_framers")
           .select("*", { count: "exact", head: true }),
-        supabase.from("resources").select("*", { count: "exact", head: true }),
         supabase
           .from("resource_access_logs")
           .select("*", { count: "exact", head: true }),
       ]);
 
-      setStats({
-        framers: framers.count || 0,
-        resources: resources.count || 0,
-        accessLogs: logs.count || 0,
-      });
+      setFramerCount(framers.count || 0);
+      setDownloads(logs.count || 0);
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (session) {
+        const res = await fetch("/api/library", {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        if (res.ok) {
+          const body = await res.json();
+          setModules(body.modules || []);
+        }
+      }
+
       setLoading(false);
     }
 
@@ -71,41 +82,61 @@ export default function AdminDashboard() {
     );
   }
 
+  const fileCount = modules.reduce((n, m) => n + m.files.length, 0);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <PortalHeader
         framer={framer}
         onSignOut={handleSignOut}
         title="Admin"
-        subtitle="Manage resources and certified framers"
+        subtitle="Who has access, and what they're using"
         backHref="/resources"
         backLabel="← Resources"
       />
 
       <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="mb-10 grid grid-cols-1 gap-6 md:grid-cols-3">
-          <StatCard label="Certified Framers" value={stats.framers} />
-          <StatCard label="Resources" value={stats.resources} />
-          <StatCard label="Downloads Logged" value={stats.accessLogs} />
+          <StatCard label="Certified Framers" value={framerCount} />
+          <StatCard label="Handouts Live" value={fileCount} />
+          <StatCard label="Downloads Logged" value={downloads} />
         </div>
 
         <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200">
           <div className="h-1.5 bg-runfree-grad" />
           <div className="p-8">
             <h2 className="font-display text-xl font-bold text-runfree-ink">
-              Add a resource
+              Managing content
             </h2>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-gray-600">
-              Paste a Google Drive link. The portal stores the file&rsquo;s ID
-              rather than a copy, so whenever you edit that file in Drive, framers
-              get the updated version the next time they open it.
+              There&rsquo;s nothing to manage here — the portal reads your{" "}
+              <span className="font-medium text-runfree-ink">
+                Pivvot Handouts (PDF)
+              </span>{" "}
+              folder directly. Add, rename, reorganise, or delete a file in
+              Drive and framers see the change within a minute. Files you move to
+              the trash disappear automatically.
             </p>
-            <a
-              href="/admin/resources/new"
-              className="mt-6 inline-block rounded-lg bg-runfree-grad px-6 py-2.5 font-semibold text-white transition hover:opacity-90"
-            >
-              Add New Resource
-            </a>
+
+            <div className="mt-6 space-y-2">
+              {modules.map((m) => (
+                <div
+                  key={m.id}
+                  className="flex items-center justify-between rounded-lg bg-gray-50 px-4 py-2.5 text-sm"
+                >
+                  <span className="font-medium text-runfree-ink">{m.name}</span>
+                  <span className="text-gray-500">
+                    {m.files.length} {m.files.length === 1 ? "file" : "files"}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <p className="mt-6 text-xs leading-relaxed text-gray-500">
+              To add a new module, create a subfolder in that Drive folder. To
+              control ordering, prefix folder and file names with a number
+              (&ldquo;1 - …&rdquo;, &ldquo;01 …&rdquo;) as you already do.
+            </p>
           </div>
         </div>
       </main>
