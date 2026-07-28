@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { getCurrentFramer, logout } from "@/lib/auth";
 import { parseVideoUrl, PROVIDER_LABEL } from "@/lib/video";
 import PortalHeader from "@/components/PortalHeader";
+import PageLoader from "@/components/PageLoader";
 
 type Framer = {
   id: string;
@@ -79,14 +80,7 @@ export default function VideosPage() {
   }
 
   if (status === "checking") {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <div className="mx-auto mb-4 h-1.5 w-24 rounded-full bg-runfree-grad" />
-          <p className="text-sm text-gray-500">Checking your access…</p>
-        </div>
-      </div>
-    );
+    return <PageLoader label="Checking your access…" />;
   }
 
   if (status === "denied") {

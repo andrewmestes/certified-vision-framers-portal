@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Poppins, Montserrat } from "next/font/google";
 import "./globals.css";
 
@@ -20,7 +20,21 @@ const montserrat = Montserrat({
 export const metadata: Metadata = {
   title: "Certified Vision Framers Portal | RunFree",
   description:
-    "Access training materials and resources for RunFree Certified Vision Framers",
+    "Handouts, facilitator guides, and training videos for RunFree Certified Vision Framers.",
+  // The portal is gated, so there's nothing for search engines to index and
+  // no reason to let it be crawled.
+  robots: { index: false, follow: false },
+  openGraph: {
+    title: "Certified Vision Framers Portal",
+    siteName: "RunFree",
+    description:
+      "Handouts, facilitator guides, and training videos for RunFree Certified Vision Framers.",
+    type: "website",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#E43D96",
 };
 
 export default function RootLayout({

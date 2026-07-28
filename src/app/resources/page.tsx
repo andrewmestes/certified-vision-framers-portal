@@ -6,6 +6,7 @@ import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { getCurrentFramer, logout } from "@/lib/auth";
 import PortalHeader from "@/components/PortalHeader";
+import PageLoader from "@/components/PageLoader";
 
 type Framer = {
   id: string;
@@ -163,14 +164,7 @@ export default function ResourcesPage() {
   const totalShown = shown.reduce((n, m) => n + m.files.length, 0);
 
   if (status === "checking") {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <div className="mx-auto mb-4 h-1.5 w-24 rounded-full bg-runfree-grad" />
-          <p className="text-sm text-gray-500">Checking your access…</p>
-        </div>
-      </div>
-    );
+    return <PageLoader label="Checking your access…" />;
   }
 
   if (status === "denied") {
@@ -290,10 +284,13 @@ export default function ResourcesPage() {
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {mod.files.map((file) => (
+                  {mod.files.map((file, i) => (
                     <article
                       key={file.id}
-                      className="flex flex-col overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-200 transition hover:shadow-md"
+                      style={
+                        { "--delay": `${Math.min(i, 8) * 45}ms` } as React.CSSProperties
+                      }
+                      className="animate-rise flex flex-col overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-200 transition duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:ring-runfree-magenta/30"
                     >
                       <div className="h-1 bg-runfree-grad" />
                       <div className="flex flex-1 flex-col p-5">
