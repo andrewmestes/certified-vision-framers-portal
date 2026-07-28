@@ -1,93 +1,143 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyGHLWebhook, getGHLContact, syncGHLContact } from "@/lib/ghl";
-import { ApiResponse } from "@/types";
+import { supabaseAdmin } from "@/lib/supabase";
 
 /**
  * POST /api/webhooks/ghl
- * Receives webhook from GoHighLevel when a contact is tagged as "Certified Vision Framer"
+ *
+ * Driven by a GoHighLevel Workflow with a Webhook action, not the GHL API —
+ * the workflow payload already carries the contact, so there's no API key to
+ * manage and nothing to poll.
+ *
+ * Auth is a shared secret in the x-portal-secret header, set on both the
+ * workflow and GHL_WEBHOOK_SECRET in Vercel.
+ *
+ * Add a Custom Data pair of action=remove on a "tag removed" workflow to
+ * revoke access; anything else is treated as an add.
  */
+
+/** GHL's field naming varies by trigger, so accept the common shapes. */
+function pick(payload: Record<string, unknown>, keys: string[]): string {
+  for (const key of keys) {
+    const value = payload[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
+}
+
 export async function POST(req: NextRequest) {
+  const secret = process.env.GHL_WEBHOOK_SECRET;
+
+  if (!secret) {
+    console.error("GHL webhook hit but GHL_WEBHOOK_SECRET is not set");
+    return NextResponse.json(
+      { error: "Webhook not configured" },
+      { status: 503 }
+    );
+  }
+
+  const provided = req.headers.get("x-portal-secret");
+
+  if (provided !== secret) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  let payload: Record<string, unknown>;
   try {
-    // Get webhook signature from headers
-    const signature = req.headers.get("x-ghl-signature") || "";
+    payload = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
 
-    // Get raw body for signature verification
-    const body = await req.text();
+  const email = pick(payload, ["email", "Email", "contact_email"]).toLowerCase();
 
-    // Verify webhook signature
-    if (!verifyGHLWebhook(body, signature)) {
-      return NextResponse.json<ApiResponse>(
-        { success: false, error: "Invalid webhook signature" },
-        { status: 401 }
-      );
+  if (!email || !email.includes("@")) {
+    return NextResponse.json(
+      { error: "No email in payload" },
+      { status: 400 }
+    );
+  }
+
+  const contactId = pick(payload, ["contact_id", "contactId", "id"]);
+  const action = pick(payload, ["action"]).toLowerCase();
+
+  const fullName =
+    pick(payload, ["full_name", "fullName", "name"]) ||
+    [
+      pick(payload, ["first_name", "firstName"]),
+      pick(payload, ["last_name", "lastName"]),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+
+  try {
+    if (action === "remove") {
+      await supabaseAdmin
+        .from("certified_framers")
+        .delete()
+        .eq("email", email);
+
+      await supabaseAdmin.from("ghl_sync_log").insert({
+        ghl_contact_id: contactId || email,
+        status: "success",
+      });
+
+      return NextResponse.json({ ok: true, action: "removed", email });
     }
 
-    const payload = JSON.parse(body);
+    const { data: existing } = await supabaseAdmin
+      .from("certified_framers")
+      .select("id")
+      .eq("email", email)
+      .maybeSingle();
 
-    // Check if this is a tag update webhook
-    if (payload.type !== "contact.update") {
-      return NextResponse.json<ApiResponse>(
-        { success: true, message: "Event not processed" },
-        { status: 200 }
-      );
+    if (existing) {
+      // Already on the list — just keep the GHL link current. Never
+      // overwrite an existing name or touch is_admin.
+      if (contactId) {
+        await supabaseAdmin
+          .from("certified_framers")
+          .update({ ghl_contact_id: contactId })
+          .eq("id", existing.id);
+      }
+    } else {
+      await supabaseAdmin.from("certified_framers").insert({
+        email,
+        name: fullName || email,
+        ghl_contact_id: contactId || null,
+      });
     }
 
-    const fieldId = process.env.GHL_CUSTOM_FIELD_ID;
-    if (!fieldId) {
-      return NextResponse.json<ApiResponse>(
-        { success: false, error: "GHL_CUSTOM_FIELD_ID not configured" },
-        { status: 500 }
-      );
-    }
-
-    // Check if the custom field indicates certification
-    const isCertified = payload.customField?.[fieldId] === true;
-
-    if (!isCertified) {
-      return NextResponse.json<ApiResponse>(
-        { success: true, message: "Contact not certified" },
-        { status: 200 }
-      );
-    }
-
-    // Get full contact info from GHL
-    const contact = await getGHLContact(payload.contactId);
-
-    // Sync to portal
-    await syncGHLContact({
-      id: contact.id,
-      email: contact.email,
-      firstName: contact.firstName,
-      lastName: contact.lastName,
+    await supabaseAdmin.from("ghl_sync_log").insert({
+      ghl_contact_id: contactId || email,
+      status: "success",
     });
 
-    return NextResponse.json<ApiResponse>(
-      {
-        success: true,
-        message: "Contact synced successfully",
-      },
-      { status: 200 }
-    );
+    return NextResponse.json({
+      ok: true,
+      action: existing ? "already_present" : "added",
+      email,
+    });
   } catch (error) {
-    console.error("GHL webhook error:", error);
+    const message =
+      error instanceof Error ? error.message : "Webhook processing failed";
 
-    return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "Webhook processing failed",
-      },
-      { status: 500 }
-    );
+    await supabaseAdmin.from("ghl_sync_log").insert({
+      ghl_contact_id: contactId || email,
+      status: "failed",
+      error_message: message,
+    });
+
+    console.error("GHL webhook error:", error);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
-/**
- * GET /api/webhooks/ghl
- * Health check for webhook setup
- */
+/** GET — quick health check you can hit in a browser. */
 export async function GET() {
   return NextResponse.json({
-    status: "webhook endpoint active",
+    status: "ok",
     endpoint: "/api/webhooks/ghl",
+    configured: Boolean(process.env.GHL_WEBHOOK_SECRET),
   });
 }
