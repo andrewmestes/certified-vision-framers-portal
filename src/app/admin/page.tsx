@@ -108,6 +108,25 @@ export default function AdminDashboard() {
           <StatCard label="Downloads Logged" value={downloads} />
         </div>
 
+        <div className="mb-8 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200">
+          <div className="h-1.5 bg-runfree-grad" />
+          <div className="p-8">
+            <h2 className="font-display text-xl font-bold text-runfree-ink">
+              Who has access
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-gray-600">
+              Add or remove certified framers, and see who has actually created
+              their login.
+            </p>
+            <a
+              href="/admin/framers"
+              className="mt-6 inline-block rounded-lg bg-runfree-grad px-6 py-2.5 font-semibold text-white transition hover:opacity-90"
+            >
+              Manage Framers
+            </a>
+          </div>
+        </div>
+
         <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200">
           <div className="h-1.5 bg-runfree-grad" />
           <div className="p-8">
