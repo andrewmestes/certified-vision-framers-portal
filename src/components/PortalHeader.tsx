@@ -8,6 +8,11 @@ type Props = {
   /** Where the "back" affordance points, if this isn't the top-level page. */
   backHref?: string;
   backLabel?: string;
+  /**
+   * Show the navy title band with the certification badge. Reserved for the
+   * top-level pages — on admin screens it's ceremony that gets in the way.
+   */
+  badge?: boolean;
 };
 
 export default function PortalHeader({
@@ -17,6 +22,7 @@ export default function PortalHeader({
   subtitle,
   backHref,
   backLabel,
+  badge = false,
 }: Props) {
   return (
     <header className="border-b border-gray-200 bg-white">
@@ -85,13 +91,39 @@ export default function PortalHeader({
         </nav>
       </div>
 
-      {/* Page title */}
-      <div className="mx-auto max-w-7xl px-4 pb-8 pt-2 sm:px-6 lg:px-8">
-        <h1 className="font-display text-3xl font-extrabold tracking-tight text-runfree-ink sm:text-4xl">
-          {title}
-        </h1>
-        {subtitle && <p className="mt-2 text-gray-600">{subtitle}</p>}
-      </div>
+      {/* Page title. The badge variant gets a navy band so the certification
+          mark has a ground of its own rather than competing with the RunFree
+          logo in the white chrome above it. */}
+      {badge ? (
+        <div className="bg-runfree-navy">
+          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-6 px-4 py-8 sm:px-6 lg:px-8">
+            <div className="min-w-0">
+              <h1 className="font-display text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+                {title}
+              </h1>
+              {subtitle && (
+                <p className="mt-2 max-w-xl text-white/70">{subtitle}</p>
+              )}
+            </div>
+
+            <Image
+              src="/brand/pivvot-badge-white.svg"
+              alt="Pivvot Vision Framing — Certified"
+              width={200}
+              height={200}
+              priority
+              className="h-20 w-auto shrink-0 opacity-95 sm:h-24"
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="mx-auto max-w-7xl px-4 pb-8 pt-2 sm:px-6 lg:px-8">
+          <h1 className="font-display text-3xl font-extrabold tracking-tight text-runfree-ink sm:text-4xl">
+            {title}
+          </h1>
+          {subtitle && <p className="mt-2 text-gray-600">{subtitle}</p>}
+        </div>
+      )}
     </header>
   );
 }

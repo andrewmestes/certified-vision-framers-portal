@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { getCurrentFramer, logout } from "@/lib/auth";
 import PortalHeader from "@/components/PortalHeader";
 import PageLoader from "@/components/PageLoader";
+import PortalFooter from "@/components/PortalFooter";
 import ModuleNav from "@/components/ModuleNav";
 import FilePreview, { PreviewFile } from "@/components/FilePreview";
 import { MODULE_META, isProcessModule } from "@/lib/modules";
@@ -213,7 +214,8 @@ export default function ResourcesPage() {
         framer={framer}
         onSignOut={handleSignOut}
         title="Certified Vision Framer Hub"
-        subtitle="Every tool you need to lead a team from clarity to a future they can see"
+        subtitle="Helping leaders run free into what Jesus started"
+        badge
       />
 
       <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
@@ -347,6 +349,8 @@ export default function ResourcesPage() {
           </div>
         )}
       </main>
+
+      <PortalFooter />
 
       {preview && (
         <FilePreview

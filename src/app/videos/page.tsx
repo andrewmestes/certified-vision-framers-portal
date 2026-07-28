@@ -7,6 +7,7 @@ import { getCurrentFramer, logout } from "@/lib/auth";
 import { parseVideoUrl, PROVIDER_LABEL } from "@/lib/video";
 import PortalHeader from "@/components/PortalHeader";
 import PageLoader from "@/components/PageLoader";
+import PortalFooter from "@/components/PortalFooter";
 
 type Framer = {
   id: string;
@@ -103,6 +104,7 @@ export default function VideosPage() {
         onSignOut={handleSignOut}
         title="Training Videos"
         subtitle="Walkthroughs and coaching for facilitating the tools"
+        badge
       />
 
       <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
@@ -206,6 +208,8 @@ export default function VideosPage() {
           </div>
         )}
       </main>
+
+      <PortalFooter />
 
       {/* Player */}
       {playing && (
