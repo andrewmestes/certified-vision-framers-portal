@@ -125,7 +125,7 @@ export default function VideosPage() {
                   {module}
                 </h2>
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                  {items.map((v) => {
+                  {items.map((v, i) => {
                     const parsed = parseVideoUrl(v.url);
                     return (
                       <button
@@ -135,31 +135,67 @@ export default function VideosPage() {
                             ? setPlaying(v)
                             : window.open(parsed.watchUrl, "_blank")
                         }
-                        className="group overflow-hidden rounded-2xl bg-white text-left shadow-sm ring-1 ring-gray-200 transition hover:shadow-lg"
+                        style={
+                          {
+                            "--delay": `${Math.min(i, 8) * 45}ms`,
+                          } as React.CSSProperties
+                        }
+                        className="animate-rise group overflow-hidden rounded-2xl bg-white text-left shadow-sm ring-1 ring-gray-200 transition duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:ring-runfree-magenta/30"
                       >
-                        <div className="relative flex aspect-video items-center justify-center bg-runfree-sunset">
-                          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white/95 shadow-lg transition group-hover:scale-110">
-                            <svg
-                              viewBox="0 0 24 24"
-                              className="ml-1 h-6 w-6 fill-runfree-magenta"
-                              aria-hidden="true"
-                            >
-                              <path d="M8 5v14l11-7z" />
-                            </svg>
+                        <div className="relative aspect-video overflow-hidden bg-runfree-sunset">
+                          {parsed.thumbnailUrl && (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                              src={parsed.thumbnailUrl}
+                              alt=""
+                              loading="lazy"
+                              className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:opacity-0"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                              }}
+                            />
+                          )}
+
+                          {/* Loom's animated preview, revealed on hover. */}
+                          {parsed.animatedUrl && (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                              src={parsed.animatedUrl}
+                              alt=""
+                              loading="lazy"
+                              className="absolute inset-0 h-full w-full object-cover opacity-0 transition duration-300 group-hover:opacity-100"
+                            />
+                          )}
+
+                          <span className="absolute inset-0 flex items-center justify-center">
+                            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white/95 shadow-lg transition duration-300 group-hover:scale-110">
+                              <svg
+                                viewBox="0 0 24 24"
+                                className="ml-1 h-6 w-6 fill-runfree-magenta"
+                                aria-hidden="true"
+                              >
+                                <path d="M8 5v14l11-7z" />
+                              </svg>
+                            </span>
                           </span>
-                          <span className="absolute right-3 top-3 rounded-full bg-black/30 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white backdrop-blur">
+
+                          {/* Duration sits on the thumbnail, the way every
+                              video player does it — not as body copy. */}
+                          {v.description && (
+                            <span className="absolute bottom-2 right-2 rounded bg-black/70 px-1.5 py-0.5 text-[11px] font-semibold text-white">
+                              {v.description}
+                            </span>
+                          )}
+
+                          <span className="absolute left-2 top-2 rounded-full bg-black/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white backdrop-blur">
                             {PROVIDER_LABEL[parsed.provider]}
                           </span>
                         </div>
-                        <div className="p-5">
-                          <h3 className="font-display text-base font-semibold leading-snug text-runfree-ink">
+
+                        <div className="p-4">
+                          <h3 className="font-display text-[15px] font-semibold leading-snug text-runfree-ink">
                             {v.title}
                           </h3>
-                          {v.description && (
-                            <p className="mt-1.5 text-sm leading-relaxed text-gray-600">
-                              {v.description}
-                            </p>
-                          )}
                         </div>
                       </button>
                     );

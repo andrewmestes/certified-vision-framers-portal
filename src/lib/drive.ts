@@ -126,8 +126,12 @@ export { extractDriveId } from "./drive-id";
 export type PortalFile = {
   id: string;
   name: string;
-  /** Filename with the leading "01 " ordering prefix and extension removed. */
+  /** Display title: extension and the "- CERT" marker removed, number kept. */
   title: string;
+  /** The leading "01" / "03.1", split out so the UI can style it. */
+  num: string | null;
+  /** Title without the leading number. */
+  label: string;
   mimeType: string;
   sizeBytes: number | null;
   modifiedTime: string | null;
@@ -151,11 +155,19 @@ function leadingNumber(name: string): number {
 }
 
 function toTitle(filename: string): string {
+  // The leading number is kept deliberately — it's how the handouts are
+  // referenced during a session ("turn to 03"), so stripping it would break
+  // the shared vocabulary between the portal and the room.
   return filename
     .replace(/\.[a-z0-9]{1,5}$/i, "") // extension
-    .replace(/^\s*\d+(\.\d+)?\s+/, "") // leading "01 " / "03.1 "
     .replace(/\s*-\s*CERT$/i, "") // certification marker
     .trim();
+}
+
+/** The "01" / "03.1" prefix, split out so it can be styled separately. */
+function splitNumber(title: string): { num: string | null; rest: string } {
+  const m = title.match(/^\s*(\d+(?:\.\d+)?)\s+(.*)$/);
+  return m ? { num: m[1], rest: m[2] } : { num: null, rest: title };
 }
 
 /**
@@ -226,15 +238,21 @@ export async function listPortalLibrary(): Promise<PortalModule[]> {
           !isTimestampedExport(f.name) ||
           !canonical.has(toTitle(f.name).toLowerCase())
       )
-      .map<PortalFile>((f) => ({
-        id: f.id,
-        name: f.name,
-        title: toTitle(f.name),
-        mimeType: f.mimeType,
-        sizeBytes: f.size ? Number(f.size) : null,
-        modifiedTime: f.modifiedTime || null,
-        order: leadingNumber(f.name),
-      }))
+      .map<PortalFile>((f) => {
+        const title = toTitle(f.name);
+        const { num, rest } = splitNumber(title);
+        return {
+          id: f.id,
+          name: f.name,
+          title,
+          num,
+          label: rest,
+          mimeType: f.mimeType,
+          sizeBytes: f.size ? Number(f.size) : null,
+          modifiedTime: f.modifiedTime || null,
+          order: leadingNumber(f.name),
+        };
+      })
       .sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
 
   const moduleFolders = folders.filter((f) =>

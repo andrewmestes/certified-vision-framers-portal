@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { getCurrentFramer, logout } from "@/lib/auth";
 import PortalHeader from "@/components/PortalHeader";
 import PageLoader from "@/components/PageLoader";
+import ModuleNav from "@/components/ModuleNav";
+import FilePreview, { PreviewFile } from "@/components/FilePreview";
 
 type Framer = {
   id: string;
@@ -19,23 +20,18 @@ type PortalFile = {
   id: string;
   name: string;
   title: string;
+  num: string | null;
+  label: string;
   mimeType: string;
   sizeBytes: number | null;
-  modifiedTime: string | null;
 };
 
 type PortalModule = {
   id: string;
   name: string;
-  /** Leading number of the Drive folder — also picks the Pivvot icon. */
   order: number;
   files: PortalFile[];
 };
-
-/** Pivvot process icons, keyed by module number (RUNFREE-LOGO-PACK, Blue PNG). */
-function moduleIcon(order: number): string | null {
-  return order >= 1 && order <= 6 ? `/brand/modules/${order}.png` : null;
-}
 
 function prettySize(bytes: number | null) {
   if (!bytes) return "";
@@ -51,8 +47,8 @@ export default function ResourcesPage() {
   );
   const [loadError, setLoadError] = useState("");
   const [query, setQuery] = useState("");
-  const [activeModule, setActiveModule] = useState<string>("all");
-  const [opening, setOpening] = useState<string | null>(null);
+  const [active, setActive] = useState("all");
+  const [preview, setPreview] = useState<PreviewFile | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
 
@@ -60,13 +56,11 @@ export default function ResourcesPage() {
     const {
       data: { session },
     } = await supabase.auth.getSession();
-
     if (!session) return;
 
     const res = await fetch(`/api/library${fresh ? "?fresh=1" : ""}`, {
       headers: { Authorization: `Bearer ${session.access_token}` },
     });
-
     const body = await res.json();
 
     if (!res.ok) {
@@ -83,14 +77,12 @@ export default function ResourcesPage() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-
       if (!user) {
         router.replace("/auth/login");
         return;
       }
 
       const current = (await getCurrentFramer()) as Framer | null;
-
       if (!current) {
         setStatus("denied");
         return;
@@ -100,7 +92,6 @@ export default function ResourcesPage() {
       await loadLibrary();
       setStatus("ready");
     }
-
     init();
   }, [router, loadLibrary]);
 
@@ -115,44 +106,35 @@ export default function ResourcesPage() {
     setRefreshing(false);
   }
 
-  async function handleOpen(file: PortalFile) {
-    setOpening(file.id);
-    setLoadError("");
-
-    try {
+  /** Authorised blob URL — same gated endpoint the download uses. */
+  const fetchBlobUrl = useCallback(
+    async (id: string): Promise<string | null> => {
       const {
         data: { session },
       } = await supabase.auth.getSession();
+      if (!session) return null;
 
-      if (!session) {
-        router.replace("/auth/login");
-        return;
-      }
-
-      const res = await fetch(`/api/library/file/${file.id}`, {
+      const res = await fetch(`/api/library/file/${id}`, {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        setLoadError(body.error || "Could not open that file.");
-        return;
-      }
+      if (!res.ok) return null;
 
       const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank", "noopener,noreferrer");
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    } catch {
-      setLoadError("Could not open that file.");
-    } finally {
-      setOpening(null);
-    }
-  }
+      // Force the PDF content type so browsers render rather than download.
+      return URL.createObjectURL(
+        blob.type === "application/pdf"
+          ? blob
+          : new Blob([blob], { type: "application/pdf" })
+      );
+    },
+    []
+  );
 
   const needle = query.trim().toLowerCase();
-  const shown = modules
-    .filter((m) => activeModule === "all" || m.id === activeModule)
+
+  // Search spans every module; the icon nav only narrows when not searching.
+  const visible = modules
+    .filter((m) => needle || active === "all" || m.id === active)
     .map((m) => ({
       ...m,
       files: needle
@@ -161,11 +143,9 @@ export default function ResourcesPage() {
     }))
     .filter((m) => m.files.length > 0);
 
-  const totalShown = shown.reduce((n, m) => n + m.files.length, 0);
+  const total = visible.reduce((n, m) => n + m.files.length, 0);
 
-  if (status === "checking") {
-    return <PageLoader label="Checking your access…" />;
-  }
+  if (status === "checking") return <PageLoader label="Checking your access…" />;
 
   if (status === "denied") {
     return (
@@ -202,164 +182,122 @@ export default function ResourcesPage() {
         subtitle="Your certification handouts, straight from the source folder"
       />
 
-      <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
         {loadError && (
           <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {loadError}
           </div>
         )}
 
-        {/* Search + module filter */}
-        <div className="mb-8 space-y-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search handouts…"
-              className="w-full max-w-sm rounded-lg border border-gray-300 px-4 py-2.5 text-sm outline-none transition placeholder:text-gray-400 focus:border-runfree-magenta focus:ring-2 focus:ring-runfree-magenta/25"
-            />
-            <span className="text-sm text-gray-500">
-              {totalShown} {totalShown === 1 ? "handout" : "handouts"}
-            </span>
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className="ml-auto rounded-lg px-3 py-2 text-sm font-medium text-gray-600 ring-1 ring-gray-200 transition hover:text-runfree-magentaDeep hover:ring-runfree-magenta/40 disabled:opacity-50"
-            >
-              {refreshing ? "Refreshing…" : "Refresh from Drive"}
-            </button>
-          </div>
+        <ModuleNav
+          modules={modules.map((m) => ({
+            id: m.id,
+            name: m.name,
+            order: m.order,
+            count: m.files.length,
+          }))}
+          active={needle ? "all" : active}
+          onSelect={(id) => {
+            setActive(id);
+            setQuery("");
+          }}
+        />
 
-          <div className="flex flex-wrap gap-2">
-            <FilterChip
-              active={activeModule === "all"}
-              onClick={() => setActiveModule("all")}
-            >
-              All
-            </FilterChip>
-            {modules.map((m) => (
-              <FilterChip
-                key={m.id}
-                active={activeModule === m.id}
-                onClick={() => setActiveModule(m.id)}
-                icon={moduleIcon(m.order)}
-              >
-                {m.name}
-              </FilterChip>
-            ))}
-          </div>
+        <div className="mb-6 flex flex-wrap items-center gap-3">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search all handouts…"
+            className="w-full max-w-sm rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm outline-none transition placeholder:text-gray-400 focus:border-runfree-magenta focus:ring-2 focus:ring-runfree-magenta/25"
+          />
+          <span className="text-sm text-gray-500">
+            {total} {total === 1 ? "handout" : "handouts"}
+            {needle && " matching"}
+          </span>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="ml-auto rounded-lg px-3 py-2 text-sm font-medium text-gray-600 ring-1 ring-gray-200 transition hover:text-runfree-magentaDeep hover:ring-runfree-magenta/40 disabled:opacity-50"
+          >
+            {refreshing ? "Refreshing…" : "Refresh from Drive"}
+          </button>
         </div>
 
-        {shown.length === 0 ? (
+        {visible.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-gray-300 bg-white py-16 text-center">
             <p className="font-display text-lg font-semibold text-runfree-ink">
               {modules.length === 0 ? "Nothing here yet" : "No matches"}
             </p>
             <p className="mt-2 text-sm text-gray-500">
               {modules.length === 0
-                ? "Files added to the shared Drive folder will appear here automatically."
+                ? "Files added to the shared Drive folder appear here automatically."
                 : "Try a different search."}
             </p>
           </div>
         ) : (
-          <div className="space-y-12">
-            {shown.map((mod) => (
-              <section key={mod.id}>
-                <div className="mb-4 flex items-center gap-3">
-                  {moduleIcon(mod.order) && (
-                    <Image
-                      src={moduleIcon(mod.order) as string}
-                      alt=""
-                      width={44}
-                      height={44}
-                      className="h-11 w-11 shrink-0 object-contain"
-                    />
-                  )}
-                  <h2 className="font-display text-xl font-bold text-runfree-ink">
+          <div className="space-y-8">
+            {visible.map((mod, mi) => (
+              <section
+                key={mod.id}
+                style={{ "--delay": `${mi * 60}ms` } as React.CSSProperties}
+                className="animate-rise overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200"
+              >
+                <div className="h-1 bg-runfree-grad" />
+
+                <header className="flex items-center gap-3 border-b border-gray-100 px-5 py-4">
+                  <h2 className="font-display text-lg font-bold text-runfree-ink">
                     {mod.name}
                   </h2>
-                  <span className="text-sm text-gray-400">
+                  <span className="rounded-full bg-runfree-indigo px-2.5 py-0.5 text-xs font-semibold text-runfree-navy">
                     {mod.files.length}
                   </span>
-                </div>
+                </header>
 
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {mod.files.map((file, i) => (
-                    <article
-                      key={file.id}
-                      style={
-                        { "--delay": `${Math.min(i, 8) * 45}ms` } as React.CSSProperties
-                      }
-                      className="animate-rise flex flex-col overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-200 transition duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:ring-runfree-magenta/30"
-                    >
-                      <div className="h-1 bg-runfree-grad" />
-                      <div className="flex flex-1 flex-col p-5">
-                        <h3 className="font-display text-base font-semibold leading-snug text-runfree-ink">
-                          {file.title}
-                        </h3>
-                        <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3">
-                          <span className="text-xs text-gray-400">
-                            {prettySize(file.sizeBytes)}
-                          </span>
-                          <button
-                            onClick={() => handleOpen(file)}
-                            disabled={opening === file.id}
-                            className="rounded-lg bg-runfree-grad px-4 py-1.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
-                          >
-                            {opening === file.id ? "Opening…" : "Open"}
-                          </button>
-                        </div>
-                      </div>
-                    </article>
+                <ul className="divide-y divide-gray-100">
+                  {mod.files.map((file) => (
+                    <li key={file.id}>
+                      <button
+                        onClick={() => setPreview(file)}
+                        className="group flex w-full items-center gap-4 px-5 py-3 text-left transition hover:bg-runfree-pink/40"
+                      >
+                        <span
+                          className={`w-10 shrink-0 font-display text-sm font-bold tabular-nums ${
+                            file.num
+                              ? "text-runfree-magentaDeep"
+                              : "text-transparent"
+                          }`}
+                        >
+                          {file.num || "—"}
+                        </span>
+
+                        <span className="min-w-0 flex-1 truncate text-[15px] font-medium text-runfree-ink">
+                          {file.label}
+                        </span>
+
+                        <span className="hidden shrink-0 text-xs text-gray-400 sm:inline">
+                          {prettySize(file.sizeBytes)}
+                        </span>
+
+                        <span className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold text-runfree-magentaDeep opacity-0 ring-1 ring-runfree-magenta/30 transition group-hover:opacity-100">
+                          Preview
+                        </span>
+                      </button>
+                    </li>
                   ))}
-                </div>
+                </ul>
               </section>
             ))}
           </div>
         )}
       </main>
-    </div>
-  );
-}
 
-function FilterChip({
-  active,
-  onClick,
-  children,
-  icon,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-  icon?: string | null;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex items-center gap-2 rounded-full py-2 text-sm font-medium transition ${
-        icon ? "pl-2 pr-4" : "px-4"
-      } ${
-        active
-          ? "bg-runfree-grad text-white shadow-sm"
-          : "bg-white text-gray-600 ring-1 ring-gray-200 hover:ring-runfree-magenta/40"
-      }`}
-    >
-      {icon && (
-        <span
-          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
-            active ? "bg-white/90" : "bg-transparent"
-          }`}
-        >
-          <Image
-            src={icon}
-            alt=""
-            width={20}
-            height={20}
-            className="h-5 w-5 object-contain"
-          />
-        </span>
+      {preview && (
+        <FilePreview
+          file={preview}
+          fetchUrl={fetchBlobUrl}
+          onClose={() => setPreview(null)}
+        />
       )}
-      {children}
-    </button>
+    </div>
   );
 }

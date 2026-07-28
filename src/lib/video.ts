@@ -11,6 +11,10 @@ export type ParsedVideo = {
   embedUrl: string | null;
   /** Where "open in a new tab" should point. */
   watchUrl: string;
+  /** Still image for the card. Null where the provider doesn't expose one. */
+  thumbnailUrl: string | null;
+  /** Animated preview shown on hover — Loom's is a short looping GIF. */
+  animatedUrl: string | null;
 };
 
 export function parseVideoUrl(input: string): ParsedVideo {
@@ -23,6 +27,8 @@ export function parseVideoUrl(input: string): ParsedVideo {
       provider: "loom",
       embedUrl: `https://www.loom.com/embed/${loom[1]}`,
       watchUrl: `https://www.loom.com/share/${loom[1]}`,
+      thumbnailUrl: `https://cdn.loom.com/sessions/thumbnails/${loom[1]}-00001.jpg`,
+      animatedUrl: `https://cdn.loom.com/sessions/thumbnails/${loom[1]}-00001.gif`,
     };
   }
 
@@ -35,6 +41,8 @@ export function parseVideoUrl(input: string): ParsedVideo {
       provider: "youtube",
       embedUrl: `https://www.youtube-nocookie.com/embed/${yt[1]}`,
       watchUrl: `https://www.youtube.com/watch?v=${yt[1]}`,
+      thumbnailUrl: `https://img.youtube.com/vi/${yt[1]}/hqdefault.jpg`,
+      animatedUrl: null,
     };
   }
 
@@ -44,6 +52,10 @@ export function parseVideoUrl(input: string): ParsedVideo {
       provider: "vimeo",
       embedUrl: `https://player.vimeo.com/video/${vimeo[1]}`,
       watchUrl: `https://vimeo.com/${vimeo[1]}`,
+      // Vimeo thumbnails need an API call, so the card falls back to the
+      // gradient placeholder.
+      thumbnailUrl: null,
+      animatedUrl: null,
     };
   }
 
@@ -54,10 +66,18 @@ export function parseVideoUrl(input: string): ParsedVideo {
       provider: "drive",
       embedUrl: `https://drive.google.com/file/d/${drive[1]}/preview`,
       watchUrl: `https://drive.google.com/file/d/${drive[1]}/view`,
+      thumbnailUrl: null,
+      animatedUrl: null,
     };
   }
 
-  return { provider: "unknown", embedUrl: null, watchUrl: url };
+  return {
+    provider: "unknown",
+    embedUrl: null,
+    watchUrl: url,
+    thumbnailUrl: null,
+    animatedUrl: null,
+  };
 }
 
 export const PROVIDER_LABEL: Record<VideoProvider, string> = {
