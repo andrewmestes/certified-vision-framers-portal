@@ -27,11 +27,13 @@ export function parseVideoUrl(input: string): ParsedVideo {
       provider: "loom",
       embedUrl: `https://www.loom.com/embed/${loom[1]}`,
       watchUrl: `https://www.loom.com/share/${loom[1]}`,
-      // -00001.jpg is the literal first frame, which on most Loom recordings
-      // is black before the camera wakes up. -with-play is the composed share
-      // thumbnail and actually shows the video.
-      thumbnailUrl: `https://cdn.loom.com/sessions/thumbnails/${loom[1]}-with-play.gif`,
-      animatedUrl: null,
+      // -00001.jpg is the literal first frame, usually black before the
+      // camera wakes. -with-play is the composed share thumbnail: the jpg is
+      // ~3KB and loads instantly, the gif is 200KB-1.5MB and only worth
+      // fetching on hover. Some Looms return 403 for both (workspace-
+      // restricted), in which case the card falls back to the gradient.
+      thumbnailUrl: `https://cdn.loom.com/sessions/thumbnails/${loom[1]}-with-play.jpg`,
+      animatedUrl: `https://cdn.loom.com/sessions/thumbnails/${loom[1]}-with-play.gif`,
     };
   }
 

@@ -109,10 +109,10 @@ export default function PortalHeader({
             <Image
               src="/brand/pivvot-badge-white.svg"
               alt="Pivvot Vision Framing — Certified"
-              width={200}
-              height={200}
+              width={280}
+              height={280}
               priority
-              className="h-20 w-auto shrink-0 opacity-95 sm:h-24"
+              className="h-24 w-auto shrink-0 opacity-95 sm:h-32"
             />
           </div>
         </div>

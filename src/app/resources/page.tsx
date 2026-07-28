@@ -9,7 +9,6 @@ import PageLoader from "@/components/PageLoader";
 import PortalFooter from "@/components/PortalFooter";
 import ModuleNav from "@/components/ModuleNav";
 import FilePreview, { PreviewFile } from "@/components/FilePreview";
-import { MODULE_META, isProcessModule } from "@/lib/modules";
 
 type Framer = {
   id: string;
@@ -73,7 +72,17 @@ export default function ResourcesPage() {
     }
 
     setLoadError("");
-    setModules(body.modules || []);
+    const loaded = body.modules || [];
+    setModules(loaded);
+
+    // Land on Funnel Fusion rather than all 100 handouts at once.
+    setActive((prev) => {
+      if (prev) return prev;
+      const first = loaded.find(
+        (m: PortalModule) => m.order >= 1 && m.order <= 6
+      );
+      return first ? first.id : "";
+    });
   }, []);
 
   useEffect(() => {
@@ -282,25 +291,13 @@ export default function ResourcesPage() {
                 <div className="h-1 bg-runfree-grad" />
 
                 <header className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-gray-100 px-5 py-4">
-                  <div className="min-w-0 flex-1">
-                    {isProcessModule(mod.order) && MODULE_META[mod.order] && (
-                      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-runfree-magentaDeep">
-                        {MODULE_META[mod.order].stage}
-                      </p>
-                    )}
-                    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                      <h2 className="font-display text-lg font-bold text-runfree-ink">
-                        {mod.name}
-                      </h2>
-                      {isProcessModule(mod.order) && MODULE_META[mod.order] && (
-                        <span className="font-display text-sm font-semibold text-runfree-orange">
-                          {MODULE_META[mod.order].mantra}
-                        </span>
-                      )}
-                      <span className="rounded-full bg-runfree-indigo px-2.5 py-0.5 text-xs font-semibold text-runfree-navy">
-                        {mod.files.length}
-                      </span>
-                    </div>
+                  <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <h2 className="font-display text-lg font-bold text-runfree-ink">
+                      {mod.name}
+                    </h2>
+                    <span className="rounded-full bg-runfree-indigo px-2.5 py-0.5 text-xs font-semibold text-runfree-navy">
+                      {mod.files.length}
+                    </span>
                   </div>
 
                   <button

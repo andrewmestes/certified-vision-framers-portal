@@ -32,6 +32,7 @@ export default function VideosPage() {
     "checking"
   );
   const [playing, setPlaying] = useState<Video | null>(null);
+  const [hovered, setHovered] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -137,6 +138,8 @@ export default function VideosPage() {
                             ? setPlaying(v)
                             : window.open(parsed.watchUrl, "_blank")
                         }
+                        onMouseEnter={() => setHovered(v.id)}
+                        onMouseLeave={() => setHovered((h) => (h === v.id ? null : h))}
                         style={
                           {
                             "--delay": `${Math.min(i, 8) * 45}ms`,
@@ -151,21 +154,22 @@ export default function VideosPage() {
                               src={parsed.thumbnailUrl}
                               alt=""
                               loading="lazy"
-                              className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:opacity-0"
+                              className="absolute inset-0 h-full w-full object-cover"
                               onError={(e) => {
                                 e.currentTarget.style.display = "none";
                               }}
                             />
                           )}
 
-                          {/* Loom's animated preview, revealed on hover. */}
-                          {parsed.animatedUrl && (
+                          {/* The animated preview is 200KB-1.5MB, so it's
+                              only mounted once the card is hovered rather
+                              than fetched for every card on the page. */}
+                          {parsed.animatedUrl && hovered === v.id && (
                             /* eslint-disable-next-line @next/next/no-img-element */
                             <img
                               src={parsed.animatedUrl}
                               alt=""
-                              loading="lazy"
-                              className="absolute inset-0 h-full w-full object-cover opacity-0 transition duration-300 group-hover:opacity-100"
+                              className="animate-fade absolute inset-0 h-full w-full object-cover"
                             />
                           )}
 
