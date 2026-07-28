@@ -36,6 +36,22 @@ export default function PortalHeader({
         </a>
 
         <nav className="flex items-center gap-4 text-sm">
+          {!backHref && (
+            <>
+              <a
+                href="/resources"
+                className="font-medium text-gray-600 transition hover:text-runfree-magentaDeep"
+              >
+                Resources
+              </a>
+              <a
+                href="/videos"
+                className="font-medium text-gray-600 transition hover:text-runfree-magentaDeep"
+              >
+                Videos
+              </a>
+            </>
+          )}
           {backHref && (
             <a
               href={backHref}
