@@ -27,8 +27,11 @@ export function parseVideoUrl(input: string): ParsedVideo {
       provider: "loom",
       embedUrl: `https://www.loom.com/embed/${loom[1]}`,
       watchUrl: `https://www.loom.com/share/${loom[1]}`,
-      thumbnailUrl: `https://cdn.loom.com/sessions/thumbnails/${loom[1]}-00001.jpg`,
-      animatedUrl: `https://cdn.loom.com/sessions/thumbnails/${loom[1]}-00001.gif`,
+      // -00001.jpg is the literal first frame, which on most Loom recordings
+      // is black before the camera wakes up. -with-play is the composed share
+      // thumbnail and actually shows the video.
+      thumbnailUrl: `https://cdn.loom.com/sessions/thumbnails/${loom[1]}-with-play.gif`,
+      animatedUrl: null,
     };
   }
 

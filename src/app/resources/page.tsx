@@ -8,6 +8,7 @@ import PortalHeader from "@/components/PortalHeader";
 import PageLoader from "@/components/PageLoader";
 import ModuleNav from "@/components/ModuleNav";
 import FilePreview, { PreviewFile } from "@/components/FilePreview";
+import { MODULE_META, isProcessModule } from "@/lib/modules";
 
 type Framer = {
   id: string;
@@ -47,9 +48,11 @@ export default function ResourcesPage() {
   );
   const [loadError, setLoadError] = useState("");
   const [query, setQuery] = useState("");
-  const [active, setActive] = useState("all");
+  /** Empty means no module chosen — everything shows. */
+  const [active, setActive] = useState("");
   const [preview, setPreview] = useState<PreviewFile | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [zipping, setZipping] = useState<string | null>(null);
   const router = useRouter();
 
   const loadLibrary = useCallback(async (fresh = false) => {
@@ -130,11 +133,42 @@ export default function ResourcesPage() {
     []
   );
 
+  /** Zip a whole module, streamed from the gated endpoint. */
+  async function downloadModule(mod: PortalModule) {
+    setZipping(mod.id);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const res = await fetch(`/api/library/module/${mod.id}/zip`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (!res.ok) {
+        setLoadError("Could not build that download. Try again.");
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${mod.name}.zip`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 30_000);
+    } catch {
+      setLoadError("Could not build that download. Try again.");
+    } finally {
+      setZipping(null);
+    }
+  }
+
   const needle = query.trim().toLowerCase();
 
   // Search spans every module; the icon nav only narrows when not searching.
   const visible = modules
-    .filter((m) => needle || active === "all" || m.id === active)
+    .filter((m) => needle || !active || m.id === active)
     .map((m) => ({
       ...m,
       files: needle
@@ -178,8 +212,8 @@ export default function ResourcesPage() {
       <PortalHeader
         framer={framer}
         onSignOut={handleSignOut}
-        title="Vision Framers Resources"
-        subtitle="Your certification handouts, straight from the source folder"
+        title="Certified Vision Framer Hub"
+        subtitle="Every tool you need to lead a team from clarity to a future they can see"
       />
 
       <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
@@ -196,9 +230,10 @@ export default function ResourcesPage() {
             order: m.order,
             count: m.files.length,
           }))}
-          active={needle ? "all" : active}
+          active={needle ? "" : active}
           onSelect={(id) => {
-            setActive(id);
+            // Clicking the selected module again clears the filter.
+            setActive((prev) => (prev === id ? "" : id));
             setQuery("");
           }}
         />
@@ -244,13 +279,35 @@ export default function ResourcesPage() {
               >
                 <div className="h-1 bg-runfree-grad" />
 
-                <header className="flex items-center gap-3 border-b border-gray-100 px-5 py-4">
-                  <h2 className="font-display text-lg font-bold text-runfree-ink">
-                    {mod.name}
-                  </h2>
-                  <span className="rounded-full bg-runfree-indigo px-2.5 py-0.5 text-xs font-semibold text-runfree-navy">
-                    {mod.files.length}
-                  </span>
+                <header className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-gray-100 px-5 py-4">
+                  <div className="min-w-0 flex-1">
+                    {isProcessModule(mod.order) && MODULE_META[mod.order] && (
+                      <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-runfree-magentaDeep">
+                        {MODULE_META[mod.order].stage}
+                      </p>
+                    )}
+                    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                      <h2 className="font-display text-lg font-bold text-runfree-ink">
+                        {mod.name}
+                      </h2>
+                      {isProcessModule(mod.order) && MODULE_META[mod.order] && (
+                        <span className="font-display text-sm font-semibold text-runfree-orange">
+                          {MODULE_META[mod.order].mantra}
+                        </span>
+                      )}
+                      <span className="rounded-full bg-runfree-indigo px-2.5 py-0.5 text-xs font-semibold text-runfree-navy">
+                        {mod.files.length}
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => downloadModule(mod)}
+                    disabled={zipping === mod.id}
+                    className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold text-gray-600 ring-1 ring-gray-200 transition hover:text-runfree-magentaDeep hover:ring-runfree-magenta/40 disabled:opacity-50"
+                  >
+                    {zipping === mod.id ? "Zipping…" : "Download all"}
+                  </button>
                 </header>
 
                 <ul className="divide-y divide-gray-100">
