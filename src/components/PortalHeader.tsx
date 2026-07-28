@@ -53,9 +53,12 @@ export default function PortalHeader({
             </a>
           )}
           {framer?.name && (
-            <span className="hidden text-gray-400 sm:inline">
+            <a
+              href="/account"
+              className="hidden font-medium text-gray-500 transition hover:text-runfree-magentaDeep sm:inline"
+            >
               {framer.name}
-            </span>
+            </a>
           )}
           <button
             onClick={onSignOut}

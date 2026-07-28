@@ -66,9 +66,25 @@ export async function logout() {
   if (error) throw error;
 }
 
+/**
+ * Google sign-in. Worth having beyond convenience: Google vouches for the
+ * address, so someone can't claim an allowlisted email that isn't theirs.
+ */
+export async function signInWithGoogle() {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: `${window.location.origin}/auth/callback`,
+      queryParams: { prompt: "select_account" },
+    },
+  });
+
+  if (error) throw error;
+}
+
 export async function resetPassword(email: string) {
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/reset-password`,
+    redirectTo: `${window.location.origin}/auth/reset-password`,
   });
 
   if (error) throw error;
