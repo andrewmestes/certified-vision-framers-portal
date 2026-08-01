@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { fetchDriveFile } from "@/lib/drive";
-import { listBooksLibrary, isDriveConfigured } from "@/lib/books";
+import { listBooksLibrary, isDriveConfigured, type BookFile } from "@/lib/books";
+import { logAccess } from "@/lib/access-log";
 
 /**
  * GET /api/books/file/{driveId}
@@ -52,20 +53,35 @@ export async function GET(
     }
 
     const library = await listBooksLibrary();
-    const known = new Set(
-      library.books.flatMap((b) =>
-        [b.fullBook, b.visualSummary, ...b.chapters, ...b.other]
-          .filter(Boolean)
-          .map((f) => f!.id)
-      )
-    );
-    library.extras.forEach((f) => known.add(f.id));
+    let matchedFile: BookFile | null = null;
+    let matchedBook: string | null = null;
+    for (const b of library.books) {
+      const found = [b.fullBook, b.visualSummary, ...b.chapters, ...b.other].find(
+        (f) => f?.id === id
+      );
+      if (found) {
+        matchedFile = found;
+        matchedBook = b.name;
+        break;
+      }
+    }
+    if (!matchedFile) {
+      matchedFile = library.extras.find((f) => f.id === id) ?? null;
+    }
 
-    if (!known.has(id)) {
+    if (!matchedFile) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
     const file = await fetchDriveFile(id);
+
+    await logAccess({
+      framerId: framer.id,
+      source: "books",
+      resourceId: id,
+      resourceName: matchedFile.title,
+      module: matchedBook,
+    });
 
     return new NextResponse(file.body, {
       status: 200,

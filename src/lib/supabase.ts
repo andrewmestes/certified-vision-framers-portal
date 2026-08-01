@@ -89,15 +89,19 @@ export type Database = {
         Row: {
           id: string;
           framer_id: string;
+          source: "library" | "books" | "guide";
           resource_id: string;
-          action: "view" | "download";
+          resource_name: string;
+          module: string | null;
           accessed_at: string;
         };
         Insert: {
           id?: string;
           framer_id: string;
+          source: "library" | "books" | "guide";
           resource_id: string;
-          action: "view" | "download";
+          resource_name: string;
+          module?: string | null;
           accessed_at?: string;
         };
       };

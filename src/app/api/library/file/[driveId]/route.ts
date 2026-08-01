@@ -5,6 +5,7 @@ import {
   listPortalLibrary,
   isDriveConfigured,
 } from "@/lib/drive";
+import { logAccess } from "@/lib/access-log";
 
 /**
  * GET /api/library/file/{driveId}
@@ -58,13 +59,30 @@ export async function GET(
     // Only serve files that belong to the shared library. The service account
     // can't see anything else anyway, but this keeps the boundary explicit.
     const modules = await listPortalLibrary();
-    const known = modules.some((m) => m.files.some((f) => f.id === driveId));
+    let matchedFile: { id: string; title: string } | null = null;
+    let matchedModule: string | null = null;
+    for (const m of modules) {
+      const found = m.files.find((f) => f.id === driveId);
+      if (found) {
+        matchedFile = found;
+        matchedModule = m.name;
+        break;
+      }
+    }
 
-    if (!known) {
+    if (!matchedFile) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
     const file = await fetchDriveFile(driveId);
+
+    await logAccess({
+      framerId: framer.id,
+      source: "library",
+      resourceId: driveId,
+      resourceName: matchedFile.title,
+      module: matchedModule,
+    });
 
     return new NextResponse(file.body, {
       status: 200,

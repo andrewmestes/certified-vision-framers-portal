@@ -147,6 +147,26 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        <div className="mb-8 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200">
+          <div className="h-1.5 bg-runfree-grad" />
+          <div className="p-8">
+            <h2 className="font-display text-xl font-bold text-runfree-ink">
+              Access logs
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-gray-600">
+              See who opened which handout, book, or the Facilitator&rsquo;s
+              Guide, and when. Filter by framer or date range, or export to
+              CSV.
+            </p>
+            <a
+              href="/admin/logs"
+              className="mt-6 inline-block rounded-lg bg-runfree-grad px-6 py-2.5 font-semibold text-white transition hover:opacity-90"
+            >
+              View Access Logs
+            </a>
+          </div>
+        </div>
+
         <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200">
           <div className="h-1.5 bg-runfree-grad" />
           <div className="p-8">

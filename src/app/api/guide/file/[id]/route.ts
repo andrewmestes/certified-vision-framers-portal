@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { fetchDriveFile } from "@/lib/drive";
 import { getFacilitatorGuide, isDriveConfigured } from "@/lib/guide";
+import { logAccess } from "@/lib/access-log";
 
 /**
  * GET /api/guide/file/{id}
@@ -57,6 +58,13 @@ export async function GET(
     }
 
     const file = await fetchDriveFile(id);
+
+    await logAccess({
+      framerId: framer.id,
+      source: "guide",
+      resourceId: id,
+      resourceName: current.title,
+    });
 
     return new NextResponse(file.body, {
       status: 200,

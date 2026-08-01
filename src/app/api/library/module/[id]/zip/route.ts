@@ -8,6 +8,7 @@ import {
   listPortalLibrary,
   isDriveConfigured,
 } from "@/lib/drive";
+import { logAccess } from "@/lib/access-log";
 
 /**
  * GET /api/library/module/{id}/zip
@@ -63,6 +64,14 @@ export async function GET(
     if (!mod || mod.files.length === 0) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
+
+    await logAccess({
+      framerId: framer.id,
+      source: "library",
+      resourceId: `zip:${mod.id}`,
+      resourceName: `${mod.name} (zip)`,
+      module: mod.name,
+    });
 
     const archive = new ZipArchive({ zlib: { level: 6 } });
     const out = new PassThrough();
