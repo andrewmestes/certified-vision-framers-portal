@@ -103,7 +103,7 @@ export default function AdminDashboard() {
 
       <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="mb-10 grid grid-cols-1 gap-6 md:grid-cols-3">
-          <StatCard label="Certified Framers" value={framerCount} />
+          <StatCard label="Certified Vision Framers" value={framerCount} />
           <StatCard label="Handouts Live" value={fileCount} />
           <StatCard label="Downloads Logged" value={downloads} />
         </div>
@@ -115,7 +115,7 @@ export default function AdminDashboard() {
               Who has access
             </h2>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-gray-600">
-              Add or remove certified framers, and see who has actually created
+              Add or remove Certified Vision Framers, and see who has actually created
               their login.
             </p>
             <a

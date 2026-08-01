@@ -56,6 +56,12 @@ export default function PortalHeader({
               >
                 Videos
               </a>
+              <a
+                href="/books"
+                className="font-medium text-gray-600 transition hover:text-runfree-magentaDeep"
+              >
+                Books
+              </a>
             </>
           )}
           {backHref && (

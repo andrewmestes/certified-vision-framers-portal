@@ -224,7 +224,7 @@ export default function FramersAdminPage() {
       <PortalHeader
         framer={me}
         onSignOut={handleSignOut}
-        title="Certified Framers"
+        title="Certified Vision Framers"
         subtitle="Who can get into the portal"
         backHref="/admin"
         backLabel="← Admin"
@@ -247,7 +247,7 @@ export default function FramersAdminPage() {
           <div className="h-1.5 bg-runfree-grad" />
           <form onSubmit={handleAdd} className="p-6">
             <h2 className="font-display text-lg font-bold text-runfree-ink">
-              Add a certified framer
+              Add a Certified Vision Framer
             </h2>
             <p className="mt-1 text-sm text-gray-600">
               They&rsquo;ll create their own account with this email — you
