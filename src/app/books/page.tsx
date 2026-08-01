@@ -50,26 +50,25 @@ const COVERS: Record<string, string> = {
   "church unique": "/brand/books/church-unique.png",
   "god dreams": "/brand/books/god-dreams.png",
   younique: "/brand/books/younique.png",
+  calling: "/brand/books/calling.png",
 };
 
 function coverFor(name: string): string | null {
   return COVERS[name.toLowerCase().trim()] || null;
 }
 
-// Not part of the live-mirrored shelf — Will has no facilitator resources
-// tied to this one yet, just the book itself. Still sits on the shelf
-// alongside the other four so it isn't a second-class citizen at the
+// Not part of the live-mirrored shelf — this isn't a retail book at all
+// (there's no Amazon listing), it's RunFree's own 8-week "Calling for the
+// Best of Us" group curriculum, powered by Younique. Still sits on the
+// shelf alongside the other four so it isn't a second-class citizen at the
 // bottom of the page.
 const CALLING_ID = "calling";
 const CALLING_BOOK = {
   id: CALLING_ID,
   name: "Calling",
-  title: "Calling: For the Best of Us",
+  title: "Calling for the Best of Us",
   description:
-    "Will's exploration of vocational calling — the piece of the process that gets personal. Where Younique names an individual's unique design, Calling pushes further into what it means to actually live inside that design as a leader. Worth having alongside Younique when a framer is helping someone see their own place in the process, not just the church's.",
-  amazonUrl: `https://www.amazon.com/s?k=${encodeURIComponent(
-    "Calling For the Best of Us Will Mancini"
-  )}`,
+    "RunFree's 8-week Calling Group curriculum, powered by Younique — where Younique names an individual's unique design, this is the group experience that helps a team actually activate it. Not a book on Amazon; it's a facilitated program run through RunFree.",
 };
 
 function prettySize(bytes: number | null) {
@@ -242,25 +241,23 @@ export default function BooksPage() {
         {activeId === CALLING_ID && (
           <div className="animate-rise overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200">
             <div className="h-1 bg-runfree-grad" />
-            <div className="p-8 text-center sm:p-10">
+            <div className="flex flex-col items-center gap-2 p-8 text-center sm:p-10">
+              <Image
+                src="/brand/books/calling.png"
+                alt=""
+                width={90}
+                height={79}
+                className="mb-2 h-16 w-auto"
+              />
               <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-runfree-magentaDeep">
-                Also from Will
+                Also from RunFree
               </p>
-              <h2 className="mt-2 font-display text-2xl font-bold text-runfree-ink">
+              <h2 className="font-display text-2xl font-bold text-runfree-ink">
                 {CALLING_BOOK.title}
               </h2>
-              <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-gray-600">
+              <p className="mx-auto mt-1 max-w-xl text-sm leading-relaxed text-gray-600">
                 {CALLING_BOOK.description}
               </p>
-              <a
-                href={CALLING_BOOK.amazonUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-6 inline-flex items-center justify-center gap-1.5 rounded-lg bg-runfree-grad px-6 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
-              >
-                Buy on Amazon
-                <ExternalIcon />
-              </a>
             </div>
           </div>
         )}
