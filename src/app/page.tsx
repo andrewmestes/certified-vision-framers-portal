@@ -101,39 +101,30 @@ export default function HubPage() {
 
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           <HubCard
-            index={1}
             href="/resources"
             icon={<HandoutsIcon />}
             title="Process Handouts"
             description="Every certification handout, module by module, straight from Drive."
-            gradient="linear-gradient(135deg, #E43D96 0%, #FF7C58 100%)"
           />
           <HubCard
-            index={2}
             href="/videos"
             icon={<VideosIcon />}
             title="Training Videos"
             description="Walkthroughs and coaching for facilitating each tool."
-            gradient="linear-gradient(135deg, #20378C 0%, #E43D96 100%)"
           />
           <HubCard
-            index={3}
             href="/books"
             icon={<BooksIcon />}
             title="Will's Books"
             description="Visual summaries, chapters, and full downloads of Will's books."
-            gradient="linear-gradient(135deg, #FF7C58 0%, #C21F73 100%)"
           />
           <HubCard
-            index={4}
             href="/guide"
             icon={<GuideIcon />}
             title="Digital Facilitator's Guide"
             description="The complete training playbook in one file, always current."
-            gradient="linear-gradient(135deg, #20378C 0%, #2F57D0 55%, #E43D96 100%)"
           />
           <HubCard
-            index={5}
             comingSoon
             icon={<KeynotesIcon />}
             title="Keynotes"
@@ -152,30 +143,21 @@ function HubCard({
   icon,
   title,
   description,
-  index,
-  gradient,
   comingSoon = false,
 }: {
   href?: string;
   icon: React.ReactNode;
   title: string;
   description: string;
-  index: number;
-  gradient?: string;
   comingSoon?: boolean;
 }) {
   if (comingSoon) {
     return (
       <div className="flex flex-col overflow-hidden rounded-2xl bg-gray-100 opacity-80">
         <div className="flex flex-1 flex-col p-6">
-          <div className="flex items-start justify-between">
-            <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-300 text-white shadow-sm">
-              {icon}
-            </span>
-            <span className="font-display text-2xl font-extrabold text-gray-300">
-              {String(index).padStart(2, "0")}
-            </span>
-          </div>
+          <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-300 text-white shadow-sm">
+            {icon}
+          </span>
           <h2 className="mt-4 font-display text-lg font-bold text-gray-600">
             {title}
           </h2>
@@ -195,18 +177,12 @@ function HubCard({
   return (
     <a
       href={href}
-      style={{ backgroundImage: gradient }}
-      className="group flex flex-col overflow-hidden rounded-2xl shadow-md transition duration-200 hover:-translate-y-1 hover:shadow-xl"
+      className="group flex flex-col overflow-hidden rounded-2xl bg-runfree-grad shadow-md transition duration-200 hover:-translate-y-1 hover:shadow-xl"
     >
       <div className="flex flex-1 flex-col p-6">
-        <div className="flex items-start justify-between">
-          <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 text-white shadow-sm ring-1 ring-white/25">
-            {icon}
-          </span>
-          <span className="font-display text-2xl font-extrabold text-white/30">
-            {String(index).padStart(2, "0")}
-          </span>
-        </div>
+        <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 text-white shadow-sm ring-1 ring-white/25">
+          {icon}
+        </span>
         <h2 className="mt-4 font-display text-lg font-bold text-white">
           {title}
         </h2>

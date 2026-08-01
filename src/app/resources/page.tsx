@@ -34,26 +34,6 @@ type PortalModule = {
   files: PortalFile[];
 };
 
-function FieldGuideIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className="h-7 w-7" aria-hidden="true">
-      <path
-        d="M4 4.5A1.5 1.5 0 015.5 3H12v18H5.5A1.5 1.5 0 014 19.5v-15z"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M20 4.5A1.5 1.5 0 0018.5 3H12v18h6.5a1.5 1.5 0 001.5-1.5v-15z"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinejoin="round"
-      />
-      <path d="M15 8h3M15 11.5h3" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 function prettySize(bytes: number | null) {
   if (!bytes) return "";
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
@@ -73,7 +53,6 @@ export default function ResourcesPage() {
   const [preview, setPreview] = useState<PreviewFile | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [zipping, setZipping] = useState<string | null>(null);
-  const [fieldGuideThumb, setFieldGuideThumb] = useState<string | null>(null);
   const router = useRouter();
 
   const loadLibrary = useCallback(async (fresh = false) => {
@@ -197,62 +176,8 @@ export default function ResourcesPage() {
 
   const needle = query.trim().toLowerCase();
 
-  // The Field Guide gets its own featured treatment above the module nav
-  // instead of sitting in the pill row with "Additional Handouts" — it's the
-  // one foundational overview, not just another folder of files.
-  const fieldGuideModule = modules.find((m) =>
-    /vision frame field guide/i.test(m.name)
-  );
-  const otherModules = fieldGuideModule
-    ? modules.filter((m) => m.id !== fieldGuideModule.id)
-    : modules;
-  const fieldGuideFile = fieldGuideModule?.files[0] || null;
-
-  useEffect(() => {
-    if (!fieldGuideFile || fieldGuideThumb) return;
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (!session) return;
-
-        const res = await fetch(`/api/library/file/${fieldGuideFile.id}`, {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        });
-        if (!res.ok) return;
-        const buf = await res.arrayBuffer();
-
-        const pdfjsLib = await import("pdfjs-dist");
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
-
-        const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-        const page = await pdf.getPage(1);
-        const scale = 240 / page.getViewport({ scale: 1 }).width;
-        const viewport = page.getViewport({ scale });
-
-        const canvas = document.createElement("canvas");
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return;
-
-        await page.render({ canvas, canvasContext: ctx, viewport }).promise;
-        if (!cancelled) setFieldGuideThumb(canvas.toDataURL("image/png"));
-      } catch {
-        // The thumbnail is a nice-to-have — the icon fallback is fine.
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [fieldGuideFile, fieldGuideThumb]);
-
   // Search spans every module; the icon nav only narrows when not searching.
-  const visible = otherModules
+  const visible = modules
     .filter((m) => needle || !active || m.id === active)
     .map((m) => ({
       ...m,
@@ -309,45 +234,8 @@ export default function ResourcesPage() {
           </div>
         )}
 
-        {fieldGuideFile && (
-          <button
-            onClick={() => setPreview(fieldGuideFile)}
-            className="group mb-8 flex w-full flex-col items-start gap-5 overflow-hidden rounded-2xl bg-runfree-grad p-6 text-left shadow-sm transition hover:shadow-lg sm:flex-row sm:items-center"
-          >
-            {fieldGuideThumb ? (
-              <span className="h-20 w-16 shrink-0 overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-white/40">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={fieldGuideThumb}
-                  alt=""
-                  className="h-full w-full object-cover"
-                />
-              </span>
-            ) : (
-              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-white/15 text-white ring-1 ring-white/30">
-                <FieldGuideIcon />
-              </span>
-            )}
-            <div className="min-w-0 flex-1">
-              <span className="inline-flex rounded-full bg-white/20 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.14em] text-white">
-                Start here
-              </span>
-              <h2 className="mt-2 font-display text-lg font-bold text-white">
-                {fieldGuideFile.label}
-              </h2>
-              <p className="mt-1 text-sm text-white/85">
-                The one-page overview of the whole Vision Frame — foundational
-                before the six modules below.
-              </p>
-            </div>
-            <span className="shrink-0 rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-runfree-magentaDeep transition group-hover:opacity-90">
-              Open
-            </span>
-          </button>
-        )}
-
         <ModuleNav
-          modules={otherModules.map((m) => ({
+          modules={modules.map((m) => ({
             id: m.id,
             name: m.name,
             order: m.order,

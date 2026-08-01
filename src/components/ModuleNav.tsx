@@ -11,6 +11,16 @@ export type NavModule = {
 };
 
 /**
+ * The Field Guide sits in the same pill row as "Additional Handouts" and
+ * "Combined Handouts" — the process icons still lead the page — but gets a
+ * highlighted style and leads that row, since it's the one thing worth
+ * seeing before the six modules.
+ */
+function isFieldGuideModule(name: string): boolean {
+  return /vision frame field guide/i.test(name);
+}
+
+/**
  * The six Pivvot process icons as primary navigation.
  *
  * A track runs behind them the way it does on the co::Lab landing page — the
@@ -141,30 +151,46 @@ export default function ModuleNav({
 
       {extras.length > 0 && (
         <div className="mt-2 flex flex-wrap justify-center gap-2">
-          {extras.map((m) => {
-            const isActive = active === m.id;
-            return (
-              <button
-                key={m.id}
-                onClick={() => onSelect(m.id)}
-                aria-pressed={isActive}
-                className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                  isActive
-                    ? "bg-runfree-grad text-white shadow-sm"
-                    : "bg-white text-gray-600 ring-1 ring-gray-200 hover:ring-runfree-magenta/40"
-                }`}
-              >
-                {m.name}
-                <span
-                  className={`ml-2 text-xs ${
-                    isActive ? "text-white/80" : "text-gray-400"
+          {extras
+            .slice()
+            .sort((a, b) =>
+              isFieldGuideModule(a.name) === isFieldGuideModule(b.name)
+                ? 0
+                : isFieldGuideModule(a.name)
+                  ? -1
+                  : 1
+            )
+            .map((m) => {
+              const isActive = active === m.id;
+              const isFieldGuide = isFieldGuideModule(m.name);
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => onSelect(m.id)}
+                  aria-pressed={isActive}
+                  className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                    isActive
+                      ? "bg-runfree-grad text-white shadow-sm"
+                      : isFieldGuide
+                        ? "bg-runfree-pink text-runfree-magentaDeep ring-1 ring-runfree-magenta/40 hover:ring-runfree-magenta/70"
+                        : "bg-white text-gray-600 ring-1 ring-gray-200 hover:ring-runfree-magenta/40"
                   }`}
                 >
-                  {m.count}
-                </span>
-              </button>
-            );
-          })}
+                  {stripModuleNumber(m.name)}
+                  <span
+                    className={`ml-2 text-xs ${
+                      isActive
+                        ? "text-white/80"
+                        : isFieldGuide
+                          ? "text-runfree-magentaDeep/60"
+                          : "text-gray-400"
+                    }`}
+                  >
+                    {m.count}
+                  </span>
+                </button>
+              );
+            })}
         </div>
       )}
     </nav>
