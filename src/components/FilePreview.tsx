@@ -112,7 +112,7 @@ export default function FilePreview({
             </div>
           ) : blobUrl ? (
             <iframe
-              src={blobUrl}
+              src={`${blobUrl}#toolbar=0&navpanes=0&statusbar=0`}
               title={file.title}
               className="h-full w-full border-0"
             />
