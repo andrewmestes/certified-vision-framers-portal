@@ -86,7 +86,7 @@ export default function VideosPage() {
   }
 
   if (status === "denied") {
-    router.replace("/resources");
+    router.replace("/");
     return null;
   }
 

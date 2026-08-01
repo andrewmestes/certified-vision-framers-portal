@@ -222,8 +222,8 @@ export default function ResourcesPage() {
       <PortalHeader
         framer={framer}
         onSignOut={handleSignOut}
-        title="Certified Vision Framer Hub"
-        subtitle="Helping leaders run free into what Jesus started"
+        title="Handouts"
+        subtitle="Your certification handouts, module by module"
         badge
       />
 

@@ -34,7 +34,7 @@ export default function AdminDashboard() {
       const current = (await getCurrentFramer()) as Framer | null;
 
       if (!current?.is_admin) {
-        router.replace("/resources");
+        router.replace("/");
         return;
       }
 
@@ -97,8 +97,8 @@ export default function AdminDashboard() {
         onSignOut={handleSignOut}
         title="Admin"
         subtitle="Who has access, and what they're using"
-        backHref="/resources"
-        backLabel="← Resources"
+        backHref="/"
+        backLabel="← Hub"
       />
 
       <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">

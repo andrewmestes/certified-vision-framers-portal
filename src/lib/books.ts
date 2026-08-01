@@ -89,10 +89,19 @@ function isChapterFile(name: string, parentFolderName: string | null): boolean {
   return /\bchapter\b/i.test(name) || /^ch0*\d+[_\s-]/i.test(name.trim());
 }
 
-/** Full-book candidate: normalized name contains the book's key, minus "book". */
+/**
+ * Full-book candidate: normalized name, with "book" removed, EQUALS the
+ * book's key exactly — i.e. "Church Unique Book.pdf" for Church Unique,
+ * "God Dreams Book.pdf" for God Dreams. Deliberately strict rather than a
+ * "contains" match: a looser rule let "Forging Future Church Book.pdf" (a
+ * different, unwanted title) get matched as if it were the Future Church
+ * book. Exact match means an unnamed/differently-titled file just doesn't
+ * show as the full book — which is the correct outcome — rather than
+ * silently picking the wrong candidate.
+ */
 function isFullBookCandidate(name: string, bookKey: string): boolean {
   const withoutBook = normalize(name).replace(/book/g, "");
-  return withoutBook.includes(bookKey);
+  return withoutBook === bookKey;
 }
 
 function parseChapterNumLabel(filename: string): { num: string | null; label: string } {

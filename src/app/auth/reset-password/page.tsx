@@ -49,7 +49,7 @@ export default function ResetPasswordPage() {
 
     try {
       await updatePassword(password);
-      router.push("/resources");
+      router.push("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not update password");
     } finally {

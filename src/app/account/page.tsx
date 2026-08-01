@@ -47,7 +47,7 @@ export default function AccountPage() {
 
       const current = (await getCurrentFramer()) as Framer | null;
       if (!current) {
-        router.replace("/resources");
+        router.replace("/");
         return;
       }
 
@@ -109,8 +109,8 @@ export default function AccountPage() {
         framer={framer}
         onSignOut={handleSignOut}
         title="Your account"
-        backHref="/resources"
-        backLabel="← Resources"
+        backHref="/"
+        backLabel="← Hub"
       />
 
       <main className="mx-auto max-w-2xl px-4 py-10 sm:px-6 lg:px-8">

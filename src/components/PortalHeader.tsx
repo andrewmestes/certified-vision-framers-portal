@@ -30,7 +30,7 @@ export default function PortalHeader({
       <div className="h-1.5 bg-runfree-grad" />
 
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
-        <a href="/resources" className="flex items-center gap-3">
+        <a href="/" className="flex items-center gap-3">
           <Image
             src="/brand/runfree-logo.png"
             alt="RunFree"
@@ -61,6 +61,13 @@ export default function PortalHeader({
                 className="font-medium text-gray-600 transition hover:text-runfree-magentaDeep"
               >
                 Books
+              </a>
+              <a
+                href="/guide"
+                title="Digital Facilitator's Guide"
+                className="font-medium text-gray-600 transition hover:text-runfree-magentaDeep"
+              >
+                DFG
               </a>
             </>
           )}

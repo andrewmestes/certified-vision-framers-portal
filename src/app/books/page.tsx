@@ -151,7 +151,7 @@ export default function BooksPage() {
   if (status === "checking") return <PageLoader label="Checking your access…" />;
 
   if (status === "denied") {
-    router.replace("/resources");
+    router.replace("/");
     return null;
   }
 

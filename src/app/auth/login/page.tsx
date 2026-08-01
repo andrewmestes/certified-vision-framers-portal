@@ -26,7 +26,7 @@ export default function LoginPage() {
 
     try {
       await loginWithEmail(email, password);
-      router.push("/resources");
+      router.push("/");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Login failed";
       // Supabase's wording here is opaque to a normal person.

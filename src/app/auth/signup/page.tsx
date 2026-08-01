@@ -45,7 +45,7 @@ export default function SignupPage() {
       // With email confirmation on, there's no session yet — they have to
       // click the link first. Without it, we can go straight in.
       if (result?.session) {
-        router.push("/resources");
+        router.push("/");
       } else {
         setCheckInbox(true);
       }

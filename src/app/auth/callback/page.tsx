@@ -24,7 +24,7 @@ export default function AuthCallbackPage() {
         if (cancelled) return;
 
         if (session) {
-          router.replace("/resources");
+          router.replace("/");
           return;
         }
 
