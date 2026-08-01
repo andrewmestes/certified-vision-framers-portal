@@ -100,7 +100,8 @@ function isChapterFile(name: string, parentFolderName: string | null): boolean {
  * silently picking the wrong candidate.
  */
 function isFullBookCandidate(name: string, bookKey: string): boolean {
-  const withoutBook = normalize(name).replace(/book/g, "");
+  const withoutExt = name.replace(/\.[a-z0-9]{1,5}$/i, "");
+  const withoutBook = normalize(withoutExt).replace(/book/g, "");
   return withoutBook === bookKey;
 }
 
