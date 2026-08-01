@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { getCurrentFramer, logout } from "@/lib/auth";
 import PortalHeader from "@/components/PortalHeader";
@@ -90,35 +89,24 @@ export default function HubPage() {
       />
 
       <main className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="mb-12 flex flex-col items-center gap-4 text-center">
-          <div className="rounded-2xl bg-white px-6 py-3 shadow-sm ring-1 ring-gray-200">
-            <Image
-              src="/brand/runfree-logo.png"
-              alt="RunFree"
-              width={200}
-              height={88}
-              priority
-              className="h-9 w-auto sm:h-11"
-            />
-          </div>
-          {framer?.name && (
-            <p className="text-lg text-gray-600">
-              Welcome back,{" "}
-              <span className="font-semibold text-runfree-ink">
-                {framer.name.split(" ")[0]}
-              </span>
-              .
-            </p>
-          )}
-        </div>
+        {framer?.name && (
+          <p className="mb-10 text-center text-lg text-gray-600">
+            Welcome back,{" "}
+            <span className="font-semibold text-runfree-ink">
+              {framer.name.split(" ")[0]}
+            </span>
+            .
+          </p>
+        )}
 
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           <HubCard
             index={1}
             href="/resources"
             icon={<HandoutsIcon />}
-            title="Handouts"
+            title="Process Handouts"
             description="Every certification handout, module by module, straight from Drive."
+            gradient="linear-gradient(135deg, #E43D96 0%, #FF7C58 100%)"
           />
           <HubCard
             index={2}
@@ -126,6 +114,7 @@ export default function HubPage() {
             icon={<VideosIcon />}
             title="Training Videos"
             description="Walkthroughs and coaching for facilitating each tool."
+            gradient="linear-gradient(135deg, #20378C 0%, #E43D96 100%)"
           />
           <HubCard
             index={3}
@@ -133,6 +122,7 @@ export default function HubPage() {
             icon={<BooksIcon />}
             title="Will's Books"
             description="Visual summaries, chapters, and full downloads of Will's books."
+            gradient="linear-gradient(135deg, #FF7C58 0%, #C21F73 100%)"
           />
           <HubCard
             index={4}
@@ -140,13 +130,14 @@ export default function HubPage() {
             icon={<GuideIcon />}
             title="Digital Facilitator's Guide"
             description="The complete training playbook in one file, always current."
+            gradient="linear-gradient(135deg, #20378C 0%, #2F57D0 55%, #E43D96 100%)"
           />
           <HubCard
             index={5}
             comingSoon
             icon={<KeynotesIcon />}
             title="Keynotes"
-            description="Recorded keynote content for teams and cohorts."
+            description="Keynote presentation files for teams and cohorts."
           />
         </div>
       </main>
@@ -162,6 +153,7 @@ function HubCard({
   title,
   description,
   index,
+  gradient,
   comingSoon = false,
 }: {
   href?: string;
@@ -169,70 +161,76 @@ function HubCard({
   title: string;
   description: string;
   index: number;
+  gradient?: string;
   comingSoon?: boolean;
 }) {
-  const content = (
-    <>
-      <div className="h-1.5 bg-runfree-grad" />
-      <div className="flex flex-1 flex-col p-6">
-        <div className="flex items-start justify-between">
-          <span
-            className={`flex h-12 w-12 items-center justify-center rounded-xl text-white shadow-sm ${
-              comingSoon ? "bg-gray-300" : "bg-runfree-grad"
-            }`}
-          >
-            {icon}
-          </span>
-          <span className="font-display text-2xl font-extrabold text-gray-100">
-            {String(index).padStart(2, "0")}
-          </span>
-        </div>
-        <h2 className="mt-4 font-display text-lg font-bold text-runfree-ink">
-          {title}
-        </h2>
-        <p className="mt-2 flex-1 text-sm leading-relaxed text-gray-600">
-          {description}
-        </p>
-        <div className="mt-4">
-          {comingSoon ? (
-            <span className="inline-flex rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-500">
+  if (comingSoon) {
+    return (
+      <div className="flex flex-col overflow-hidden rounded-2xl bg-gray-100 opacity-80">
+        <div className="flex flex-1 flex-col p-6">
+          <div className="flex items-start justify-between">
+            <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-300 text-white shadow-sm">
+              {icon}
+            </span>
+            <span className="font-display text-2xl font-extrabold text-gray-300">
+              {String(index).padStart(2, "0")}
+            </span>
+          </div>
+          <h2 className="mt-4 font-display text-lg font-bold text-gray-600">
+            {title}
+          </h2>
+          <p className="mt-2 flex-1 text-sm leading-relaxed text-gray-500">
+            {description}
+          </p>
+          <div className="mt-4">
+            <span className="inline-flex rounded-full bg-white px-3 py-1 text-xs font-semibold text-gray-500">
               Coming soon
             </span>
-          ) : (
-            <span className="inline-flex items-center gap-1 text-sm font-semibold text-runfree-magentaDeep">
-              Open
-              <svg
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                className="h-4 w-4 transition group-hover:translate-x-0.5"
-                aria-hidden="true"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H4a1 1 0 110-2h8.586l-2.293-2.293a1 1 0 010-1.414z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </span>
-          )}
+          </div>
         </div>
       </div>
-    </>
-  );
-
-  const className =
-    "group flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200 transition duration-200";
-
-  if (comingSoon) {
-    return <div className={`${className} opacity-70`}>{content}</div>;
+    );
   }
 
   return (
     <a
       href={href}
-      className={`${className} hover:-translate-y-1 hover:shadow-lg hover:ring-runfree-magenta/30`}
+      style={{ backgroundImage: gradient }}
+      className="group flex flex-col overflow-hidden rounded-2xl shadow-md transition duration-200 hover:-translate-y-1 hover:shadow-xl"
     >
-      {content}
+      <div className="flex flex-1 flex-col p-6">
+        <div className="flex items-start justify-between">
+          <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 text-white shadow-sm ring-1 ring-white/25">
+            {icon}
+          </span>
+          <span className="font-display text-2xl font-extrabold text-white/30">
+            {String(index).padStart(2, "0")}
+          </span>
+        </div>
+        <h2 className="mt-4 font-display text-lg font-bold text-white">
+          {title}
+        </h2>
+        <p className="mt-2 flex-1 text-sm leading-relaxed text-white/85">
+          {description}
+        </p>
+        <div className="mt-4">
+          <span className="inline-flex items-center gap-1 rounded-lg bg-white/90 px-3 py-1.5 text-sm font-semibold text-runfree-magentaDeep transition group-hover:bg-white">
+            Open
+            <svg
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              className="h-4 w-4 transition group-hover:translate-x-0.5"
+              aria-hidden="true"
+            >
+              <path
+                fillRule="evenodd"
+                d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H4a1 1 0 110-2h8.586l-2.293-2.293a1 1 0 010-1.414z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </span>
+        </div>
+      </div>
     </a>
   );
 }

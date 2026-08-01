@@ -57,8 +57,13 @@ function coverFor(name: string): string | null {
 }
 
 // Not part of the live-mirrored shelf — Will has no facilitator resources
-// tied to this one yet, just the book itself.
+// tied to this one yet, just the book itself. Still sits on the shelf
+// alongside the other four so it isn't a second-class citizen at the
+// bottom of the page.
+const CALLING_ID = "calling";
 const CALLING_BOOK = {
+  id: CALLING_ID,
+  name: "Calling",
   title: "Calling: For the Best of Us",
   description:
     "Will's exploration of vocational calling — the piece of the process that gets personal. Where Younique names an individual's unique design, Calling pushes further into what it means to actually live inside that design as a leader. Worth having alongside Younique when a framer is helping someone see their own place in the process, not just the church's.",
@@ -188,7 +193,7 @@ export default function BooksPage() {
 
         {/* Shelf */}
         <div className="mb-4 flex items-start justify-center gap-6 sm:gap-10">
-          {library.books.map((b) => {
+          {[...library.books, CALLING_BOOK].map((b) => {
             const cover = coverFor(b.name);
             const isActive = b.id === activeId;
             return (
@@ -196,13 +201,13 @@ export default function BooksPage() {
                 key={b.id}
                 onClick={() => setActiveId(b.id)}
                 aria-pressed={isActive}
-                className="group flex w-24 flex-col items-center gap-2 outline-none sm:w-32"
+                className="group flex w-24 flex-col items-center outline-none sm:w-32"
               >
                 <span
-                  className={`relative aspect-[2/3] w-24 overflow-hidden rounded-xl bg-white shadow-sm ring-1 transition duration-300 ease-out sm:w-32 ${
+                  className={`relative aspect-[2/3] w-24 overflow-hidden rounded-xl bg-white shadow-sm transition duration-300 ease-out sm:w-32 ${
                     isActive
-                      ? "-translate-y-1 scale-105 shadow-lg ring-2 ring-runfree-magenta"
-                      : "ring-gray-200 group-hover:-translate-y-1 group-hover:scale-105 group-hover:shadow-lg"
+                      ? "-translate-y-1 scale-105 shadow-lg"
+                      : "opacity-80 group-hover:-translate-y-1 group-hover:scale-105 group-hover:opacity-100 group-hover:shadow-lg"
                   }`}
                 >
                   {cover ? (
@@ -219,13 +224,6 @@ export default function BooksPage() {
                     </span>
                   )}
                 </span>
-                <span
-                  className={`text-center text-[13px] font-semibold leading-tight ${
-                    isActive ? "text-runfree-ink" : "text-gray-500 group-hover:text-runfree-ink"
-                  }`}
-                >
-                  {b.name}
-                </span>
               </button>
             );
           })}
@@ -240,6 +238,32 @@ export default function BooksPage() {
             {refreshing ? "Refreshing…" : "Refresh from Drive"}
           </button>
         </div>
+
+        {activeId === CALLING_ID && (
+          <div className="animate-rise overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200">
+            <div className="h-1 bg-runfree-grad" />
+            <div className="p-8 text-center sm:p-10">
+              <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-runfree-magentaDeep">
+                Also from Will
+              </p>
+              <h2 className="mt-2 font-display text-2xl font-bold text-runfree-ink">
+                {CALLING_BOOK.title}
+              </h2>
+              <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-gray-600">
+                {CALLING_BOOK.description}
+              </p>
+              <a
+                href={CALLING_BOOK.amazonUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-6 inline-flex items-center justify-center gap-1.5 rounded-lg bg-runfree-grad px-6 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
+              >
+                Buy on Amazon
+                <ExternalIcon />
+              </a>
+            </div>
+          </div>
+        )}
 
         {active && (
           <div key={active.id} className="animate-rise space-y-8">
@@ -348,33 +372,6 @@ export default function BooksPage() {
             )}
           </div>
         )}
-
-        {/* Also from Will — no Drive resources, just the book itself. */}
-        <section className="mt-12 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200">
-          <div className="h-1 bg-runfree-grad" />
-          <div className="flex flex-col gap-5 p-6 sm:flex-row sm:items-center">
-            <div className="flex-1">
-              <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-runfree-magentaDeep">
-                Also from Will
-              </p>
-              <h2 className="mt-1 font-display text-lg font-bold text-runfree-ink">
-                {CALLING_BOOK.title}
-              </h2>
-              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-gray-600">
-                {CALLING_BOOK.description}
-              </p>
-            </div>
-            <a
-              href={CALLING_BOOK.amazonUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-runfree-grad px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
-            >
-              Buy on Amazon
-              <ExternalIcon />
-            </a>
-          </div>
-        </section>
 
         {library.extras.length > 0 && (
           <section className="mt-12 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200">

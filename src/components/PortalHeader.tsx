@@ -16,11 +16,15 @@ type Props = {
 };
 
 const NAV_LINKS = [
-  { href: "/", label: "Hub" },
-  { href: "/resources", label: "Resources" },
+  { href: "/", label: "Home" },
+  { href: "/resources", label: "Handouts" },
   { href: "/videos", label: "Videos" },
   { href: "/books", label: "Books" },
-  { href: "/guide", label: "DFG", title: "Digital Facilitator's Guide" },
+  {
+    href: "/guide",
+    label: "Facilitator's Guide",
+    title: "Digital Facilitator's Guide",
+  },
 ];
 
 export default function PortalHeader({
@@ -39,19 +43,15 @@ export default function PortalHeader({
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-wrap items-center gap-x-8 gap-y-3 border-b border-white/10 py-4">
-          <a href="/" className="flex shrink-0 items-center gap-2.5">
+          <a href="/" className="flex shrink-0 items-center">
             <Image
-              src="/brand/icon-mark-white.png"
-              alt=""
-              width={36}
-              height={36}
+              src="/brand/runfree-logo-white.png"
+              alt="RunFree"
+              width={200}
+              height={88}
               priority
-              className="h-8 w-8"
+              className="h-8 w-auto"
             />
-            <span className="font-display text-sm font-extrabold uppercase leading-none tracking-wide text-white">
-              Run Free
-              <span className="text-white/50">.co</span>
-            </span>
           </a>
 
           <nav className="flex flex-1 flex-wrap items-center justify-center gap-x-7 gap-y-2 sm:gap-x-9">
@@ -61,7 +61,7 @@ export default function PortalHeader({
                   key={link.href}
                   href={link.href}
                   title={link.title}
-                  className="text-xs font-bold uppercase tracking-wider text-white/70 transition hover:text-white"
+                  className="text-sm font-bold uppercase tracking-wider text-white/70 transition hover:text-white"
                 >
                   {link.label}
                 </a>
@@ -69,7 +69,7 @@ export default function PortalHeader({
             {backHref && (
               <a
                 href={backHref}
-                className="text-xs font-bold uppercase tracking-wider text-white/70 transition hover:text-white"
+                className="text-sm font-bold uppercase tracking-wider text-white/70 transition hover:text-white"
               >
                 {backLabel || "Back"}
               </a>
