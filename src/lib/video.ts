@@ -27,12 +27,13 @@ export function parseVideoUrl(input: string): ParsedVideo {
       provider: "loom",
       embedUrl: `https://www.loom.com/embed/${loom[1]}`,
       watchUrl: `https://www.loom.com/share/${loom[1]}`,
-      // The gif is the only Loom thumbnail that carries a real frame --
-      // -00001.jpg is the black pre-roll and -with-play.jpg is a ~3KB near
-      // blank. It's heavier, so it's lazy-loaded and never fetched until the
-      // card scrolls into view. Some Looms 403 every format (workspace-
-      // restricted); those fall back to the gradient.
-      thumbnailUrl: `https://cdn.loom.com/sessions/thumbnails/${loom[1]}-with-play.gif`,
+      // Deliberately null: a Loom thumbnail URL cannot be derived from the
+      // share id. Workspace-restricted recordings 403 every guessable
+      // format, and the ones that do resolve are often a black pre-roll
+      // frame or a placeholder shared across unrelated videos. The real URL
+      // comes from /api/videos, which resolves it through oEmbed and
+      // verifies it belongs to this recording — see lib/loom.ts.
+      thumbnailUrl: null,
       animatedUrl: null,
     };
   }
@@ -83,6 +84,34 @@ export function parseVideoUrl(input: string): ParsedVideo {
     thumbnailUrl: null,
     animatedUrl: null,
   };
+}
+
+/**
+ * The `description` column carries two different things depending on the
+ * video: sometimes a runtime ("19 min", "Under 3 min"), sometimes a real
+ * subtitle ("Reinforcement training"), and sometimes both joined by a
+ * middot. Rather than rewrite a column Andrew maintains by hand, split it
+ * on read so a runtime renders as a badge on the thumbnail and anything
+ * else renders as supporting copy where it can actually be read.
+ */
+export function splitVideoMeta(description: string | null): {
+  duration: string | null;
+  subtitle: string | null;
+} {
+  const raw = (description || "").trim();
+  if (!raw) return { duration: null, subtitle: null };
+
+  const [head, ...rest] = raw.split("·").map((p) => p.trim());
+  const tail = rest.join(" · ").trim();
+
+  // "19 min", "Under 3 min", "1 hr 5 min"
+  const looksLikeDuration = /^(under\s+|about\s+|~)?\d+\s*(min|minute|hr|hour)/i;
+
+  if (looksLikeDuration.test(head)) {
+    return { duration: head, subtitle: tail || null };
+  }
+
+  return { duration: null, subtitle: raw };
 }
 
 export const PROVIDER_LABEL: Record<VideoProvider, string> = {

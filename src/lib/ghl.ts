@@ -157,6 +157,73 @@ export async function manualSyncFromGHL(email: string) {
   return syncGHLContact(contact);
 }
 
+/** The tag GHL uses to mark someone as certified. */
+export const CERTIFIED_TAG = "Certified Vision Framer";
+
+/** GHL calls are all no-ops until an API key is actually configured. */
+export function isGhlConfigured(): boolean {
+  return Boolean(process.env.GHL_API_KEY);
+}
+
+export type GhlTagResult =
+  | { status: "disabled" }
+  | { status: "tagged"; contactId: string }
+  | { status: "not_found" }
+  | { status: "failed"; message: string };
+
+/**
+ * Tag a contact in GHL as a Certified Vision Framer.
+ *
+ * Deliberately returns a status rather than throwing or silently swallowing:
+ * adding someone to the portal must still succeed when GHL is unreachable,
+ * but the admin needs to be told the CRM side didn't happen. Reporting
+ * "added" when the tag never landed is the failure mode worth avoiding here.
+ */
+export async function tagContactAsCertifiedFramer(
+  email: string
+): Promise<GhlTagResult> {
+  if (!isGhlConfigured()) return { status: "disabled" };
+
+  try {
+    const contact = await searchGHLContactByEmail(email);
+    if (!contact) return { status: "not_found" };
+
+    await ghlClient.post(`/contacts/${contact.id}/tags/`, {
+      tags: [CERTIFIED_TAG],
+    });
+
+    return { status: "tagged", contactId: contact.id };
+  } catch (error) {
+    return {
+      status: "failed",
+      message: error instanceof Error ? error.message : "Unknown GHL error",
+    };
+  }
+}
+
+/** Remove the certified tag — used when access is revoked in the portal. */
+export async function untagContactAsCertifiedFramer(
+  email: string
+): Promise<GhlTagResult> {
+  if (!isGhlConfigured()) return { status: "disabled" };
+
+  try {
+    const contact = await searchGHLContactByEmail(email);
+    if (!contact) return { status: "not_found" };
+
+    await ghlClient.delete(`/contacts/${contact.id}/tags/`, {
+      data: { tags: [CERTIFIED_TAG] },
+    });
+
+    return { status: "tagged", contactId: contact.id };
+  } catch (error) {
+    return {
+      status: "failed",
+      message: error instanceof Error ? error.message : "Unknown GHL error",
+    };
+  }
+}
+
 // TODO: Implement bi-directional sync
 // When a new certified framer is added in portal,
 // update them in GHL as well

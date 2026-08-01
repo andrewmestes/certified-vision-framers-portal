@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { getCurrentFramer, logout } from "@/lib/auth";
-import { parseVideoUrl, PROVIDER_LABEL } from "@/lib/video";
+import { parseVideoUrl, splitVideoMeta } from "@/lib/video";
+import { isProcessModule, stripModuleNumber } from "@/lib/modules";
 import PortalHeader from "@/components/PortalHeader";
 import PageLoader from "@/components/PageLoader";
 import PortalFooter from "@/components/PortalFooter";
@@ -23,7 +25,24 @@ type Video = {
   description: string | null;
   module: string | null;
   sort_order: number;
+  /** Resolved and verified server-side; null means show the branded card. */
+  thumbnailUrl: string | null;
 };
+
+type Group = {
+  key: string;
+  label: string;
+  /** Leading number of the module folder — drives which process icon shows. */
+  order: number;
+  /** Lowest sort_order in the group; this is what orders the groups. */
+  rank: number;
+  videos: Video[];
+};
+
+function leadingNumber(name: string): number {
+  const m = name.match(/^\s*(\d+)/);
+  return m ? parseInt(m[1], 10) : Number.MAX_SAFE_INTEGER;
+}
 
 export default function VideosPage() {
   const [framer, setFramer] = useState<Framer | null>(null);
@@ -31,8 +50,9 @@ export default function VideosPage() {
   const [status, setStatus] = useState<"checking" | "denied" | "ready">(
     "checking"
   );
+  const [loadError, setLoadError] = useState("");
   const [playing, setPlaying] = useState<Video | null>(null);
-  const [hovered, setHovered] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
   const router = useRouter();
 
   useEffect(() => {
@@ -51,17 +71,24 @@ export default function VideosPage() {
         setStatus("denied");
         return;
       }
-
       setFramer(current);
 
-      const { data } = await supabase
-        .from("training_videos")
-        .select("id,title,url,description,module,sort_order")
-        .eq("is_published", true)
-        .order("sort_order", { ascending: true })
-        .order("created_at", { ascending: true });
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-      setVideos(data || []);
+      if (session) {
+        const res = await fetch("/api/videos", {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        const body = await res.json();
+        if (!res.ok) {
+          setLoadError(body.error || "Could not load the videos.");
+        } else {
+          setVideos(body.videos || []);
+        }
+      }
+
       setStatus("ready");
     }
 
@@ -73,13 +100,60 @@ export default function VideosPage() {
     if (!playing) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setPlaying(null);
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
   }, [playing]);
 
   async function handleSignOut() {
     await logout();
     router.replace("/auth/login");
   }
+
+  const needle = query.trim().toLowerCase();
+
+  /**
+   * Group by module, ordering the groups by the lowest sort_order they
+   * contain rather than by the folder's leading number. sort_order is the
+   * field the admin screen already exposes, and it encodes the real
+   * sequence — including where unnumbered groups like "Orientation" belong,
+   * which a name-based rule would have no way to know.
+   */
+  const groups = useMemo<Group[]>(() => {
+    const byKey = new Map<string, Group>();
+
+    for (const v of videos) {
+      if (
+        needle &&
+        !v.title.toLowerCase().includes(needle) &&
+        !(v.module || "").toLowerCase().includes(needle)
+      ) {
+        continue;
+      }
+
+      const key = v.module?.trim() || "General";
+      if (!byKey.has(key)) {
+        byKey.set(key, {
+          key,
+          label: stripModuleNumber(key),
+          order: leadingNumber(key),
+          rank: v.sort_order,
+          videos: [],
+        });
+      }
+      const group = byKey.get(key)!;
+      group.rank = Math.min(group.rank, v.sort_order);
+      group.videos.push(v);
+    }
+
+    return [...byKey.values()].sort(
+      (a, b) => a.rank - b.rank || a.label.localeCompare(b.label)
+    );
+  }, [videos, needle]);
+
+  const total = groups.reduce((n, g) => n + g.videos.length, 0);
 
   if (status === "checking") {
     return <PageLoader label="Checking your access…" />;
@@ -88,14 +162,6 @@ export default function VideosPage() {
   if (status === "denied") {
     router.replace("/");
     return null;
-  }
-
-  // Group by module, preserving insertion order
-  const groups = new Map<string, Video[]>();
-  for (const v of videos) {
-    const key = v.module?.trim() || "General";
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key)!.push(v);
   }
 
   return (
@@ -109,6 +175,27 @@ export default function VideosPage() {
       />
 
       <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        {loadError && (
+          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {loadError}
+          </div>
+        )}
+
+        {videos.length > 0 && (
+          <div className="mb-8 flex flex-wrap items-center gap-3">
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search videos…"
+              className="w-full max-w-sm rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm outline-none transition placeholder:text-gray-400 focus:border-runfree-magenta focus:ring-2 focus:ring-runfree-magenta/25"
+            />
+            <span className="text-sm text-gray-500">
+              {total} {total === 1 ? "video" : "videos"}
+              {needle && " matching"}
+            </span>
+          </div>
+        )}
+
         {videos.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-gray-300 bg-white py-16 text-center">
             <p className="font-display text-lg font-semibold text-runfree-ink">
@@ -120,92 +207,49 @@ export default function VideosPage() {
                 : "Training videos will appear here as they're added."}
             </p>
           </div>
+        ) : groups.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-gray-300 bg-white py-16 text-center">
+            <p className="font-display text-lg font-semibold text-runfree-ink">
+              No matches
+            </p>
+            <p className="mt-2 text-sm text-gray-500">Try a different search.</p>
+          </div>
         ) : (
           <div className="space-y-12">
-            {[...groups.entries()].map(([module, items]) => (
-              <section key={module}>
-                <h2 className="mb-4 font-display text-xl font-bold text-runfree-ink">
-                  {module}
-                </h2>
+            {groups.map((group) => (
+              <section key={group.key}>
+                <header className="mb-5 flex items-center gap-3">
+                  {isProcessModule(group.order) && (
+                    <Image
+                      src={`/brand/modules/${group.order}.png`}
+                      alt=""
+                      width={40}
+                      height={40}
+                      className="h-9 w-9 shrink-0 object-contain"
+                    />
+                  )}
+                  <h2 className="font-display text-xl font-bold text-runfree-ink">
+                    {group.label}
+                  </h2>
+                  <span className="rounded-full bg-runfree-indigo px-2.5 py-0.5 text-xs font-semibold text-runfree-navy">
+                    {group.videos.length}
+                  </span>
+                </header>
+
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                  {items.map((v, i) => {
-                    const parsed = parseVideoUrl(v.url);
-                    return (
-                      <button
-                        key={v.id}
-                        onClick={() =>
-                          parsed.embedUrl
-                            ? setPlaying(v)
-                            : window.open(parsed.watchUrl, "_blank")
-                        }
-                        onMouseEnter={() => setHovered(v.id)}
-                        onMouseLeave={() => setHovered((h) => (h === v.id ? null : h))}
-                        style={
-                          {
-                            "--delay": `${Math.min(i, 8) * 45}ms`,
-                          } as React.CSSProperties
-                        }
-                        className="animate-rise group overflow-hidden rounded-2xl bg-white text-left shadow-sm ring-1 ring-gray-200 transition duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:ring-runfree-magenta/30"
-                      >
-                        <div className="relative aspect-video overflow-hidden bg-runfree-sunset">
-                          {parsed.thumbnailUrl && (
-                            /* eslint-disable-next-line @next/next/no-img-element */
-                            <img
-                              src={parsed.thumbnailUrl}
-                              alt=""
-                              loading="lazy"
-                              className="absolute inset-0 h-full w-full object-cover"
-                              onError={(e) => {
-                                e.currentTarget.style.display = "none";
-                              }}
-                            />
-                          )}
-
-                          {/* The animated preview is 200KB-1.5MB, so it's
-                              only mounted once the card is hovered rather
-                              than fetched for every card on the page. */}
-                          {parsed.animatedUrl && hovered === v.id && (
-                            /* eslint-disable-next-line @next/next/no-img-element */
-                            <img
-                              src={parsed.animatedUrl}
-                              alt=""
-                              className="animate-fade absolute inset-0 h-full w-full object-cover"
-                            />
-                          )}
-
-                          <span className="absolute inset-0 flex items-center justify-center">
-                            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white/95 shadow-lg transition duration-300 group-hover:scale-110">
-                              <svg
-                                viewBox="0 0 24 24"
-                                className="ml-1 h-6 w-6 fill-runfree-magenta"
-                                aria-hidden="true"
-                              >
-                                <path d="M8 5v14l11-7z" />
-                              </svg>
-                            </span>
-                          </span>
-
-                          {/* Duration sits on the thumbnail, the way every
-                              video player does it — not as body copy. */}
-                          {v.description && (
-                            <span className="absolute bottom-2 right-2 rounded bg-black/70 px-1.5 py-0.5 text-[11px] font-semibold text-white">
-                              {v.description}
-                            </span>
-                          )}
-
-                          <span className="absolute left-2 top-2 rounded-full bg-black/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white backdrop-blur">
-                            {PROVIDER_LABEL[parsed.provider]}
-                          </span>
-                        </div>
-
-                        <div className="p-4">
-                          <h3 className="font-display text-[15px] font-semibold leading-snug text-runfree-ink">
-                            {v.title}
-                          </h3>
-                        </div>
-                      </button>
-                    );
-                  })}
+                  {group.videos.map((v, i) => (
+                    <VideoCard
+                      key={v.id}
+                      video={v}
+                      moduleOrder={group.order}
+                      index={i}
+                      onPlay={() => {
+                        const parsed = parseVideoUrl(v.url);
+                        if (parsed.embedUrl) setPlaying(v);
+                        else window.open(parsed.watchUrl, "_blank");
+                      }}
+                    />
+                  ))}
                 </div>
               </section>
             ))}
@@ -215,26 +259,36 @@ export default function VideosPage() {
 
       <PortalFooter />
 
-      {/* Player */}
       {playing && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          className="animate-fade fixed inset-0 z-50 flex items-center justify-center bg-runfree-ink/85 p-4"
           onClick={() => setPlaying(null)}
         >
           <div
             className="w-full max-w-4xl overflow-hidden rounded-2xl bg-black shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between bg-white px-5 py-3">
-              <h3 className="font-display text-base font-semibold text-runfree-ink">
+            <div className="h-1.5 bg-runfree-grad" />
+            <div className="flex items-center justify-between gap-3 bg-white px-5 py-3">
+              <h3 className="min-w-0 truncate font-display text-base font-semibold text-runfree-ink">
                 {playing.title}
               </h3>
-              <button
-                onClick={() => setPlaying(null)}
-                className="rounded-lg px-3 py-1 text-sm font-medium text-gray-500 transition hover:text-runfree-magentaDeep"
-              >
-                Close
-              </button>
+              <div className="flex shrink-0 items-center gap-3">
+                <a
+                  href={parseVideoUrl(playing.url).watchUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm font-medium text-gray-500 transition hover:text-runfree-magentaDeep"
+                >
+                  Open original
+                </a>
+                <button
+                  onClick={() => setPlaying(null)}
+                  className="rounded-lg px-3 py-1 text-sm font-medium text-gray-500 transition hover:text-runfree-magentaDeep"
+                >
+                  Close
+                </button>
+              </div>
             </div>
             <div className="aspect-video w-full">
               <iframe
@@ -249,5 +303,84 @@ export default function VideosPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function VideoCard({
+  video,
+  moduleOrder,
+  index,
+  onPlay,
+}: {
+  video: Video;
+  moduleOrder: number;
+  index: number;
+  onPlay: () => void;
+}) {
+  const [failed, setFailed] = useState(false);
+  const { duration, subtitle } = splitVideoMeta(video.description);
+  const showThumb = Boolean(video.thumbnailUrl) && !failed;
+
+  return (
+    <button
+      onClick={onPlay}
+      style={{ "--delay": `${Math.min(index, 8) * 45}ms` } as React.CSSProperties}
+      className="animate-rise group flex flex-col overflow-hidden rounded-2xl bg-white text-left shadow-sm ring-1 ring-gray-200 transition duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:ring-runfree-magenta/30"
+    >
+      <div className="relative aspect-video overflow-hidden bg-runfree-sunset">
+        {showThumb ? (
+          <Image
+            src={video.thumbnailUrl!}
+            alt=""
+            fill
+            sizes="(min-width: 1024px) 400px, (min-width: 768px) 50vw, 100vw"
+            className="object-cover transition duration-300 group-hover:scale-[1.03]"
+            onError={() => setFailed(true)}
+          />
+        ) : (
+          /* Branded fallback rather than a bare gradient: the module icon
+             says which tool this belongs to, which is more use than an
+             empty box when Loom won't give us a still. */
+          isProcessModule(moduleOrder) && (
+            <Image
+              src={`/brand/modules/${moduleOrder}.png`}
+              alt=""
+              width={96}
+              height={96}
+              className="absolute left-1/2 top-1/2 h-20 w-20 -translate-x-1/2 -translate-y-1/2 object-contain opacity-30 brightness-0 invert"
+            />
+          )
+        )}
+
+        <span className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
+
+        <span className="absolute inset-0 flex items-center justify-center">
+          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white/95 shadow-lg transition duration-300 group-hover:scale-110">
+            <svg
+              viewBox="0 0 24 24"
+              className="ml-1 h-6 w-6 fill-runfree-magenta"
+              aria-hidden="true"
+            >
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </span>
+        </span>
+
+        {duration && (
+          <span className="absolute bottom-2 right-2 rounded bg-black/75 px-1.5 py-0.5 text-[11px] font-semibold text-white">
+            {duration}
+          </span>
+        )}
+      </div>
+
+      <div className="flex flex-1 flex-col p-4">
+        <h3 className="font-display text-[15px] font-semibold leading-snug text-runfree-ink">
+          {video.title}
+        </h3>
+        {subtitle && (
+          <p className="mt-1.5 text-sm leading-snug text-gray-500">{subtitle}</p>
+        )}
+      </div>
+    </button>
   );
 }

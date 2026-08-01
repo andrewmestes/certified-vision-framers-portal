@@ -1,5 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase, supabaseAdmin } from "@/lib/supabase";
+import {
+  isGhlConfigured,
+  tagContactAsCertifiedFramer,
+  untagContactAsCertifiedFramer,
+  type GhlTagResult,
+} from "@/lib/ghl";
+
+/** Turn a GHL result into something an admin can act on, or null if silent. */
+function ghlNotice(result: GhlTagResult, email: string): string | null {
+  switch (result.status) {
+    case "disabled":
+      return null; // Integration isn't set up; saying so on every add is noise.
+    case "tagged":
+      return null; // Worked — the success message already covers it.
+    case "not_found":
+      return `No GoHighLevel contact matches ${email}, so no tag was applied.`;
+    case "failed":
+      return `Portal access is set, but GoHighLevel tagging failed: ${result.message}`;
+  }
+}
 
 /**
  * Admin management of the certified framers allowlist.
@@ -71,6 +91,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     callerEmail: caller.email,
+    ghlConfigured: isGhlConfigured(),
     framers: (framers || []).map((f) => {
       const key = f.email.toLowerCase();
       const hasAccount = confirmedAt.has(key);
@@ -88,16 +109,44 @@ export async function GET(req: NextRequest) {
   });
 }
 
-/** Re-send the branded confirmation email to someone stuck unconfirmed. */
+/**
+ * PUT — nudge someone by email.
+ *
+ * Two different situations need two different emails, which is why this
+ * takes an action rather than assuming one:
+ *
+ *   resend — they started signing up but never clicked the confirmation
+ *            link. Re-sends the same "Confirm signup" template.
+ *   invite — they're on the allowlist but have never created a login at
+ *            all, so there is no signup to confirm and `resend` would fail.
+ *            Sends Supabase's invite email instead.
+ */
 export async function PUT(req: NextRequest) {
   const caller = await requireAdmin(req);
   if (!caller) return denied();
 
-  const { email } = await req.json();
+  const { email, action } = await req.json();
   const cleanEmail = String(email || "").trim().toLowerCase();
+  const mode = action === "invite" ? "invite" : "resend";
 
   if (!cleanEmail) {
     return NextResponse.json({ error: "Missing email" }, { status: 400 });
+  }
+
+  if (mode === "invite") {
+    // Land them on the callback route, which establishes the session and
+    // sends them into the portal; they can set a password from Account.
+    const origin = req.nextUrl.origin;
+    const { error } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+      cleanEmail,
+      { redirectTo: `${origin}/auth/callback` }
+    );
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true, sent: "invite" });
   }
 
   // Public GoTrue endpoint (no admin key needed) — it re-sends whatever
@@ -111,7 +160,7 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, sent: "confirmation" });
 }
 
 /** POST — add someone to the allowlist. */
@@ -158,7 +207,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true }, { status: 201 });
+  // Portal access is already granted at this point. GHL tagging is a
+  // best-effort follow-on: a CRM outage must not undo or block access.
+  const ghl = await tagContactAsCertifiedFramer(cleanEmail);
+
+  return NextResponse.json(
+    { ok: true, ghl: ghl.status, warning: ghlNotice(ghl, cleanEmail) },
+    { status: 201 }
+  );
 }
 
 /** PATCH — grant or revoke admin. */
@@ -205,6 +261,13 @@ export async function DELETE(req: NextRequest) {
     );
   }
 
+  // Read the email before deleting so the CRM side can be kept in step.
+  const { data: target } = await supabaseAdmin
+    .from("certified_framers")
+    .select("email")
+    .eq("id", id)
+    .maybeSingle();
+
   const { error } = await supabaseAdmin
     .from("certified_framers")
     .delete()
@@ -214,5 +277,13 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true });
+  const ghl = target?.email
+    ? await untagContactAsCertifiedFramer(target.email)
+    : ({ status: "disabled" } as GhlTagResult);
+
+  return NextResponse.json({
+    ok: true,
+    ghl: ghl.status,
+    warning: target?.email ? ghlNotice(ghl, target.email) : null,
+  });
 }
