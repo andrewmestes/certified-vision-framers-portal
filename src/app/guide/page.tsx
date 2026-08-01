@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { getCurrentFramer, logout } from "@/lib/auth";
 import PortalHeader from "@/components/PortalHeader";
@@ -121,49 +122,66 @@ export default function GuidePage() {
         badge
       />
 
-      <main className="mx-auto max-w-2xl px-4 py-10 sm:px-6 lg:px-8">
-        {loadError && (
-          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {loadError}
-          </div>
-        )}
+      {/* The whole training playbook lives in this one file — it earns a
+          moment, not just another card in a list. */}
+      <div className="relative isolate overflow-hidden bg-runfree-navy">
+        <Image
+          src="/brand/dfg-sunset.png"
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover opacity-70"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-runfree-navy/30 via-runfree-navy/60 to-runfree-navy" />
 
-        <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200">
-          <div className="h-1.5 bg-runfree-grad" />
-          <div className="p-8 text-center">
-            {file ? (
-              <>
-                <h2 className="font-display text-xl font-bold text-runfree-ink">
-                  {file.title}
-                </h2>
-                {file.modifiedTime && (
-                  <p className="mt-1 text-sm text-gray-500">
-                    Last updated {prettyDate(file.modifiedTime)}
+        <div className="relative mx-auto max-w-2xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+          {loadError && (
+            <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {loadError}
+            </div>
+          )}
+
+          <div className="overflow-hidden rounded-2xl bg-white/95 shadow-2xl ring-1 ring-white/20 backdrop-blur-sm">
+            <div className="h-1.5 bg-runfree-grad" />
+            <div className="p-8 text-center sm:p-10">
+              {file ? (
+                <>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-runfree-magentaDeep">
+                    The complete training playbook
                   </p>
-                )}
-                <button
-                  onClick={() =>
-                    setPreview({ ...file, num: null, label: file.title })
-                  }
-                  className="mt-6 rounded-lg bg-runfree-grad px-8 py-3 text-sm font-semibold text-white transition hover:opacity-90"
-                >
-                  Open the Guide
-                </button>
-              </>
-            ) : (
-              <>
-                <h2 className="font-display text-xl font-bold text-runfree-ink">
-                  No guide uploaded yet
-                </h2>
-                <p className="mt-2 text-sm text-gray-500">
-                  The Digital Facilitator&rsquo;s Guide will appear here as soon
-                  as it&rsquo;s added to Drive.
-                </p>
-              </>
-            )}
+                  <h2 className="mt-2 font-display text-2xl font-bold text-runfree-ink">
+                    {file.title}
+                  </h2>
+                  {file.modifiedTime && (
+                    <p className="mt-1 text-sm text-gray-500">
+                      Last updated {prettyDate(file.modifiedTime)}
+                    </p>
+                  )}
+                  <button
+                    onClick={() =>
+                      setPreview({ ...file, num: null, label: file.title })
+                    }
+                    className="mt-6 rounded-lg bg-runfree-grad px-8 py-3 text-sm font-semibold text-white transition hover:opacity-90"
+                  >
+                    Open the Guide
+                  </button>
+                </>
+              ) : (
+                <>
+                  <h2 className="font-display text-xl font-bold text-runfree-ink">
+                    No guide uploaded yet
+                  </h2>
+                  <p className="mt-2 text-sm text-gray-500">
+                    The Digital Facilitator&rsquo;s Guide will appear here as
+                    soon as it&rsquo;s added to Drive.
+                  </p>
+                </>
+              )}
+            </div>
           </div>
         </div>
-      </main>
+      </div>
 
       <PortalFooter />
 

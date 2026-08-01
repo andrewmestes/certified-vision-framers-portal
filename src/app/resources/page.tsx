@@ -34,6 +34,26 @@ type PortalModule = {
   files: PortalFile[];
 };
 
+function FieldGuideIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="h-7 w-7" aria-hidden="true">
+      <path
+        d="M4 4.5A1.5 1.5 0 015.5 3H12v18H5.5A1.5 1.5 0 014 19.5v-15z"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M20 4.5A1.5 1.5 0 0018.5 3H12v18h6.5a1.5 1.5 0 001.5-1.5v-15z"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinejoin="round"
+      />
+      <path d="M15 8h3M15 11.5h3" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function prettySize(bytes: number | null) {
   if (!bytes) return "";
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
@@ -176,8 +196,19 @@ export default function ResourcesPage() {
 
   const needle = query.trim().toLowerCase();
 
+  // The Field Guide gets its own featured treatment above the module nav
+  // instead of sitting in the pill row with "Additional Handouts" — it's the
+  // one foundational overview, not just another folder of files.
+  const fieldGuideModule = modules.find((m) =>
+    /vision frame field guide/i.test(m.name)
+  );
+  const otherModules = fieldGuideModule
+    ? modules.filter((m) => m.id !== fieldGuideModule.id)
+    : modules;
+  const fieldGuideFile = fieldGuideModule?.files[0] || null;
+
   // Search spans every module; the icon nav only narrows when not searching.
-  const visible = modules
+  const visible = otherModules
     .filter((m) => needle || !active || m.id === active)
     .map((m) => ({
       ...m,
@@ -234,8 +265,34 @@ export default function ResourcesPage() {
           </div>
         )}
 
+        {fieldGuideFile && (
+          <button
+            onClick={() => setPreview(fieldGuideFile)}
+            className="group mb-8 flex w-full flex-col items-start gap-4 overflow-hidden rounded-2xl bg-runfree-navy p-6 text-left shadow-sm transition hover:shadow-lg sm:flex-row sm:items-center"
+          >
+            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-white/10 text-white ring-1 ring-white/20">
+              <FieldGuideIcon />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-runfree-pink">
+                Start here
+              </p>
+              <h2 className="mt-1 font-display text-lg font-bold text-white">
+                {fieldGuideFile.label}
+              </h2>
+              <p className="mt-1 text-sm text-white/60">
+                The one-page overview of the whole Vision Frame — foundational
+                before the six modules below.
+              </p>
+            </div>
+            <span className="shrink-0 rounded-lg bg-runfree-grad px-5 py-2.5 text-sm font-semibold text-white transition group-hover:opacity-90">
+              Open
+            </span>
+          </button>
+        )}
+
         <ModuleNav
-          modules={modules.map((m) => ({
+          modules={otherModules.map((m) => ({
             id: m.id,
             name: m.name,
             order: m.order,
@@ -291,13 +348,21 @@ export default function ResourcesPage() {
                 <div className="h-1 bg-runfree-grad" />
 
                 <header className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-gray-100 px-5 py-4">
-                  <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-3 gap-y-1">
-                    <h2 className="font-display text-lg font-bold text-runfree-ink">
-                      {mod.name}
-                    </h2>
-                    <span className="rounded-full bg-runfree-indigo px-2.5 py-0.5 text-xs font-semibold text-runfree-navy">
-                      {mod.files.length}
-                    </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                      <h2 className="font-display text-lg font-bold text-runfree-ink">
+                        {mod.name}
+                      </h2>
+                      <span className="rounded-full bg-runfree-indigo px-2.5 py-0.5 text-xs font-semibold text-runfree-navy">
+                        {mod.files.length}
+                      </span>
+                    </div>
+                    {/^combined handouts$/i.test(mod.name) && (
+                      <p className="mt-1 text-xs text-gray-500">
+                        Every handout from every module, combined into one
+                        file — the Pivvot Notebook.
+                      </p>
+                    )}
                   </div>
 
                   <button

@@ -9,11 +9,19 @@ type Props = {
   backHref?: string;
   backLabel?: string;
   /**
-   * Show the navy title band with the certification badge. Reserved for the
+   * Show the Pivvot certification mark alongside the title. Reserved for the
    * top-level pages — on admin screens it's ceremony that gets in the way.
    */
   badge?: boolean;
 };
+
+const NAV_LINKS = [
+  { href: "/", label: "Hub" },
+  { href: "/resources", label: "Resources" },
+  { href: "/videos", label: "Videos" },
+  { href: "/books", label: "Books" },
+  { href: "/guide", label: "DFG", title: "Digital Facilitator's Guide" },
+];
 
 export default function PortalHeader({
   framer,
@@ -25,100 +33,86 @@ export default function PortalHeader({
   badge = false,
 }: Props) {
   return (
-    <header className="border-b border-gray-200 bg-white">
+    <header className="bg-runfree-navy">
       {/* Brand bar */}
       <div className="h-1.5 bg-runfree-grad" />
 
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
-        <a href="/" className="flex items-center gap-3">
-          <Image
-            src="/brand/runfree-logo.png"
-            alt="RunFree"
-            width={132}
-            height={32}
-            priority
-            className="h-8 w-auto"
-          />
-        </a>
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-wrap items-center gap-x-8 gap-y-3 border-b border-white/10 py-4">
+          <a href="/" className="flex shrink-0 items-center gap-2.5">
+            <Image
+              src="/brand/icon-mark-white.png"
+              alt=""
+              width={36}
+              height={36}
+              priority
+              className="h-8 w-8"
+            />
+            <span className="font-display text-sm font-extrabold uppercase leading-none tracking-wide text-white">
+              Run Free
+              <span className="text-white/50">.co</span>
+            </span>
+          </a>
 
-        <nav className="flex items-center gap-4 text-sm">
-          {!backHref && (
-            <>
+          <nav className="flex flex-1 flex-wrap items-center justify-center gap-x-7 gap-y-2 sm:gap-x-9">
+            {!backHref &&
+              NAV_LINKS.map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  title={link.title}
+                  className="text-xs font-bold uppercase tracking-wider text-white/70 transition hover:text-white"
+                >
+                  {link.label}
+                </a>
+              ))}
+            {backHref && (
               <a
-                href="/resources"
-                className="font-medium text-gray-600 transition hover:text-runfree-magentaDeep"
+                href={backHref}
+                className="text-xs font-bold uppercase tracking-wider text-white/70 transition hover:text-white"
               >
-                Resources
+                {backLabel || "Back"}
               </a>
-              <a
-                href="/videos"
-                className="font-medium text-gray-600 transition hover:text-runfree-magentaDeep"
-              >
-                Videos
-              </a>
-              <a
-                href="/books"
-                className="font-medium text-gray-600 transition hover:text-runfree-magentaDeep"
-              >
-                Books
-              </a>
-              <a
-                href="/guide"
-                title="Digital Facilitator's Guide"
-                className="font-medium text-gray-600 transition hover:text-runfree-magentaDeep"
-              >
-                DFG
-              </a>
-            </>
-          )}
-          {backHref && (
-            <a
-              href={backHref}
-              className="font-medium text-gray-500 transition hover:text-runfree-magentaDeep"
-            >
-              {backLabel || "Back"}
-            </a>
-          )}
-          {framer?.is_admin && (
-            <a
-              href="/admin"
-              className="font-medium text-runfree-magentaDeep transition hover:text-runfree-magenta"
-            >
-              Admin
-            </a>
-          )}
-          {framer?.name && (
-            <a
-              href="/account"
-              className="hidden font-medium text-gray-500 transition hover:text-runfree-magentaDeep sm:inline"
-            >
-              {framer.name}
-            </a>
-          )}
-          <button
-            onClick={onSignOut}
-            className="rounded-lg px-3 py-1.5 font-medium text-gray-600 ring-1 ring-gray-200 transition hover:text-runfree-magentaDeep hover:ring-runfree-magenta/40"
-          >
-            Sign out
-          </button>
-        </nav>
-      </div>
+            )}
+          </nav>
 
-      {/* Page title. The badge variant gets a navy band so the certification
-          mark has a ground of its own rather than competing with the RunFree
-          logo in the white chrome above it. */}
-      {badge ? (
-        <div className="bg-runfree-navy">
-          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-6 px-4 py-8 sm:px-6 lg:px-8">
-            <div className="min-w-0">
-              <h1 className="font-display text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
-                {title}
-              </h1>
-              {subtitle && (
-                <p className="mt-2 max-w-xl text-white/70">{subtitle}</p>
-              )}
-            </div>
+          <div className="flex shrink-0 items-center gap-4 text-sm">
+            {framer?.is_admin && (
+              <a
+                href="/admin"
+                className="text-xs font-bold uppercase tracking-wider text-runfree-pink transition hover:text-white"
+              >
+                Admin
+              </a>
+            )}
+            {framer?.name && (
+              <a
+                href="/account"
+                className="hidden font-medium text-white/60 transition hover:text-white sm:inline"
+              >
+                {framer.name}
+              </a>
+            )}
+            <button
+              onClick={onSignOut}
+              className="rounded-lg px-3 py-1.5 font-medium text-white/80 ring-1 ring-white/25 transition hover:text-white hover:ring-white/50"
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
 
+        <div className="flex flex-wrap items-center justify-between gap-6 py-8">
+          <div className="min-w-0">
+            <h1 className="font-display text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+              {title}
+            </h1>
+            {subtitle && (
+              <p className="mt-2 max-w-xl text-white/70">{subtitle}</p>
+            )}
+          </div>
+
+          {badge && (
             <Image
               src="/brand/pivvot-badge-white.svg"
               alt="Pivvot Vision Framing — Certified"
@@ -127,16 +121,9 @@ export default function PortalHeader({
               priority
               className="h-24 w-auto shrink-0 opacity-95 sm:h-32"
             />
-          </div>
+          )}
         </div>
-      ) : (
-        <div className="mx-auto max-w-7xl px-4 pb-8 pt-2 sm:px-6 lg:px-8">
-          <h1 className="font-display text-3xl font-extrabold tracking-tight text-runfree-ink sm:text-4xl">
-            {title}
-          </h1>
-          {subtitle && <p className="mt-2 text-gray-600">{subtitle}</p>}
-        </div>
-      )}
+      </div>
     </header>
   );
 }

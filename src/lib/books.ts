@@ -9,17 +9,57 @@ import { google } from "googleapis";
  * explicitly marked "not for distribution", a stray "Workbook" alongside the
  * real book), so this does more classification work than lib/drive.ts. Every
  * heuristic below is a one-line fix if it ever guesses wrong — none of it is
- * hardcoded to today's specific filenames.
+ * hardcoded to today's specific filenames, except the small curated tables
+ * below for content that just isn't named in a machine-parseable way.
  */
 
 const FOLDER_MIME = "application/vnd.google-apps.folder";
 
 const BOOK_DEFS = [
-  { name: "Future Church", key: "futurechurch" },
-  { name: "Church Unique", key: "churchunique" },
-  { name: "God Dreams", key: "goddreams" },
-  { name: "Younique", key: "younique" },
+  {
+    name: "Future Church",
+    key: "futurechurch",
+    amazonQuery: "Future Church Will Mancini Cory Hartman",
+  },
+  {
+    name: "Church Unique",
+    key: "churchunique",
+    amazonQuery: "Church Unique Will Mancini",
+  },
+  {
+    name: "God Dreams",
+    key: "goddreams",
+    amazonQuery: "God Dreams Will Mancini Warren Bird",
+  },
+  {
+    name: "Younique",
+    key: "younique",
+    amazonQuery: "Younique Will Mancini",
+  },
 ] as const;
+
+/**
+ * Titles that exist in the Drive folder but shouldn't surface anywhere in
+ * the portal (wrong/superseded title, not something Will wants shown). Keyed
+ * by the normalized, extension-stripped filename.
+ */
+const HIDDEN_TITLES = new Set(["forgingfuturechurchbook"]);
+
+/**
+ * A few files just aren't named in a way any heuristic can parse into a
+ * chapter number — curated by hand instead. Keyed by normalized,
+ * extension-stripped filename.
+ */
+const CHAPTER_OVERRIDES: Record<string, { num: string; label: string }> = {
+  futurechurchpart1: { num: "1", label: "Part 1" },
+  "7lawsbulletbookbymancini": { num: "2", label: "Part 2 — 7 Laws Bullet Book" },
+  futurechurchpart3: { num: "3", label: "Part 3" },
+};
+
+/** Relabel a specific book+chapter-number combo once it's been parsed. */
+const CHAPTER_LABEL_OVERRIDES: Record<string, Record<string, string>> = {
+  goddreams: { "7-10": "The 12 Templates" },
+};
 
 export type BookFile = {
   id: string;
@@ -35,6 +75,7 @@ export type BookFile = {
 export type BookShelf = {
   id: string;
   name: string;
+  amazonUrl: string;
   fullBook: BookFile | null;
   visualSummary: BookFile | null;
   chapters: BookFile[];
@@ -50,6 +91,14 @@ export type BooksLibrary = {
 
 function normalize(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function stripExt(name: string): string {
+  return name.replace(/\.[a-z0-9]{1,5}$/i, "");
+}
+
+function amazonSearchUrl(query: string): string {
+  return `https://www.amazon.com/s?k=${encodeURIComponent(query)}`;
 }
 
 function isDriveConfigured(): boolean {
@@ -79,7 +128,8 @@ function getDriveClient() {
 
 /** Anything explicitly flagged as not for distribution is skipped outright. */
 function isExcluded(name: string): boolean {
-  return /not\s*for\s*distribution/i.test(name);
+  if (/not\s*for\s*distribution/i.test(name)) return true;
+  return HIDDEN_TITLES.has(normalize(stripExt(name)));
 }
 
 function isChapterFile(name: string, parentFolderName: string | null): boolean {
@@ -90,25 +140,22 @@ function isChapterFile(name: string, parentFolderName: string | null): boolean {
 }
 
 /**
- * Full-book candidate: normalized name, with "book" removed, EQUALS the
- * book's key exactly — i.e. "Church Unique Book.pdf" for Church Unique,
- * "God Dreams Book.pdf" for God Dreams. Deliberately strict rather than a
- * "contains" match: a looser rule let "Forging Future Church Book.pdf" (a
- * different, unwanted title) get matched as if it were the Future Church
- * book. Exact match means an unnamed/differently-titled file just doesn't
- * show as the full book — which is the correct outcome — rather than
- * silently picking the wrong candidate.
+ * Full-book candidate: normalized name (extension stripped first), with
+ * "book" removed, EQUALS the book's key exactly — i.e. "Church Unique
+ * Book.pdf" for Church Unique, "God Dreams Book.pdf" for God Dreams.
+ * Deliberately strict rather than a "contains" match: a looser rule let
+ * "Forging Future Church Book.pdf" (a different, unwanted title) get matched
+ * as if it were the Future Church book. Exact match means an unnamed or
+ * differently-titled file just doesn't show as the full book — which is the
+ * correct outcome — rather than silently picking the wrong candidate.
  */
 function isFullBookCandidate(name: string, bookKey: string): boolean {
-  const withoutExt = name.replace(/\.[a-z0-9]{1,5}$/i, "");
-  const withoutBook = normalize(withoutExt).replace(/book/g, "");
+  const withoutBook = normalize(stripExt(name)).replace(/book/g, "");
   return withoutBook === bookKey;
 }
 
 function parseChapterNumLabel(filename: string): { num: string | null; label: string } {
-  const stripped = filename
-    .replace(/\.[a-z0-9]{1,5}$/i, "") // extension
-    .replace(/\s*\(\d+\)\s*$/, ""); // Drive dedup suffix like " (1)"
+  const stripped = stripExt(filename).replace(/\s*\(\d+\)\s*$/, ""); // Drive dedup suffix like " (1)"
 
   // "God Dreams Book - Chapter 7-10 (1) - Title" / "Younique Book - Chapter 27 - Death"
   const withWord = stripped.match(/chapter\s*(\d+(?:-\d+)?)\s*-?\s*(.*)$/i);
@@ -127,19 +174,18 @@ function parseChapterNumLabel(filename: string): { num: string | null; label: st
   return { num: null, label: stripped.trim() };
 }
 
-function toBookFile(f: {
-  id: string;
-  name: string;
-  mimeType: string;
-  size?: string;
-}): BookFile {
-  const { num, label } = parseChapterNumLabel(f.name);
+function toBookFile(
+  f: { id: string; name: string; mimeType: string; size?: string },
+  overrideNum?: string | null,
+  overrideLabel?: string
+): BookFile {
+  const parsed = parseChapterNumLabel(f.name);
   return {
     id: f.id,
     name: f.name,
-    title: f.name.replace(/\.[a-z0-9]{1,5}$/i, "").trim(),
-    num,
-    label,
+    title: stripExt(f.name).trim(),
+    num: overrideNum !== undefined ? overrideNum : parsed.num,
+    label: overrideLabel ?? parsed.label,
     mimeType: f.mimeType,
     sizeBytes: f.size ? Number(f.size) : null,
   };
@@ -185,11 +231,21 @@ export async function listBooksLibrary(): Promise<BooksLibrary> {
   // adding a fifth shelf later is a one-line addition to BOOK_DEFS.
   const topFolders = folders.filter((f) => (f.parents || []).includes(rootId));
 
-  // Visual Summaries: only its direct files, not the "Old branding" subfolder.
+  // Visual Summaries: its direct files are the current-branding versions.
+  // "Old branding" is a fallback only — used when a book has no current
+  // version yet, not preferred over one that exists.
   const summariesFolder = topFolders.find(
     (f) => normalize(f.name) === "visualsummaries"
   );
   const summaryFiles = summariesFolder ? childrenOf(summariesFolder.id) : [];
+  const oldBrandingFolder = summariesFolder
+    ? folders.find(
+        (f) =>
+          (f.parents || []).includes(summariesFolder.id) &&
+          /old\s*branding/i.test(f.name)
+      )
+    : undefined;
+  const oldSummaryFiles = oldBrandingFolder ? childrenOf(oldBrandingFolder.id) : [];
 
   const books: BookShelf[] = BOOK_DEFS.map((def) => {
     const folder = topFolders.find((f) => normalize(f.name) === def.key);
@@ -205,8 +261,8 @@ export async function listBooksLibrary(): Promise<BooksLibrary> {
       /chapters?$/i.test(f.name.trim())
     );
     const nestedFiles = chapterSubfolders.flatMap((sf) => childrenOf(sf.id));
-    const rootMatches = childrenOf(rootId).filter(
-      (f) => isFullBookCandidate(f.name, def.key)
+    const rootMatches = childrenOf(rootId).filter((f) =>
+      isFullBookCandidate(f.name, def.key)
     );
 
     const candidates = [...ownFiles, ...nestedFiles, ...rootMatches];
@@ -216,12 +272,21 @@ export async function listBooksLibrary(): Promise<BooksLibrary> {
     const other: BookFile[] = [];
 
     for (const f of candidates) {
+      const override = CHAPTER_OVERRIDES[normalize(stripExt(f.name))];
+      if (override) {
+        chapters.push(toBookFile(f, override.num, override.label));
+        continue;
+      }
+
       const parentFolder = (f.parents || [])
         .map((pid) => byId.get(pid))
         .find((p) => p?.mimeType === FOLDER_MIME);
 
       if (isChapterFile(f.name, parentFolder?.name ?? null)) {
-        chapters.push(toBookFile(f));
+        const bookFile = toBookFile(f);
+        const relabel =
+          bookFile.num && CHAPTER_LABEL_OVERRIDES[def.key]?.[bookFile.num];
+        chapters.push(relabel ? { ...bookFile, label: relabel } : bookFile);
       } else if (isFullBookCandidate(f.name, def.key)) {
         fullBookCandidates.push(f);
       } else {
@@ -240,9 +305,13 @@ export async function listBooksLibrary(): Promise<BooksLibrary> {
       : null;
     fullBookCandidates.slice(1).forEach((f) => other.push(toBookFile(f)));
 
-    const summaryMatch = summaryFiles
-      .filter((f) => normalize(f.name).includes(def.key))
-      .sort((a, b) => a.name.localeCompare(b.name))[0];
+    const summaryMatch =
+      summaryFiles
+        .filter((f) => normalize(f.name).includes(def.key))
+        .sort((a, b) => a.name.localeCompare(b.name))[0] ??
+      oldSummaryFiles
+        .filter((f) => normalize(f.name).includes(def.key))
+        .sort((a, b) => a.name.localeCompare(b.name))[0];
 
     chapters.sort((a, b) => {
       const an = a.num ? parseFloat(a.num) : Number.MAX_SAFE_INTEGER;
@@ -253,6 +322,7 @@ export async function listBooksLibrary(): Promise<BooksLibrary> {
     return {
       id: folder?.id || def.key,
       name: def.name,
+      amazonUrl: amazonSearchUrl(def.amazonQuery),
       fullBook,
       visualSummary: summaryMatch ? toBookFile(summaryMatch) : null,
       chapters,
@@ -273,7 +343,7 @@ export async function listBooksLibrary(): Promise<BooksLibrary> {
         !claimedIds.has(f.id) &&
         !BOOK_DEFS.some((def) => isFullBookCandidate(f.name, def.key))
     )
-    .map(toBookFile);
+    .map((f) => toBookFile(f));
 
   return { books, extras };
 }

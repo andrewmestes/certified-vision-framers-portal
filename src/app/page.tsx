@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { getCurrentFramer, logout } from "@/lib/auth";
 import PortalHeader from "@/components/PortalHeader";
@@ -89,32 +90,59 @@ export default function HubPage() {
       />
 
       <main className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
+        <div className="mb-12 flex flex-col items-center gap-4 text-center">
+          <div className="rounded-2xl bg-white px-6 py-3 shadow-sm ring-1 ring-gray-200">
+            <Image
+              src="/brand/runfree-logo.png"
+              alt="RunFree"
+              width={200}
+              height={88}
+              priority
+              className="h-9 w-auto sm:h-11"
+            />
+          </div>
+          {framer?.name && (
+            <p className="text-lg text-gray-600">
+              Welcome back,{" "}
+              <span className="font-semibold text-runfree-ink">
+                {framer.name.split(" ")[0]}
+              </span>
+              .
+            </p>
+          )}
+        </div>
+
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           <HubCard
+            index={1}
             href="/resources"
             icon={<HandoutsIcon />}
             title="Handouts"
             description="Every certification handout, module by module, straight from Drive."
           />
           <HubCard
+            index={2}
             href="/videos"
             icon={<VideosIcon />}
             title="Training Videos"
             description="Walkthroughs and coaching for facilitating each tool."
           />
           <HubCard
+            index={3}
             href="/books"
             icon={<BooksIcon />}
             title="Will's Books"
             description="Visual summaries, chapters, and full downloads of Will's books."
           />
           <HubCard
+            index={4}
             href="/guide"
             icon={<GuideIcon />}
             title="Digital Facilitator's Guide"
-            description="The current guide for running a certification cohort."
+            description="The complete training playbook in one file, always current."
           />
           <HubCard
+            index={5}
             comingSoon
             icon={<KeynotesIcon />}
             title="Keynotes"
@@ -133,21 +161,32 @@ function HubCard({
   icon,
   title,
   description,
+  index,
   comingSoon = false,
 }: {
   href?: string;
   icon: React.ReactNode;
   title: string;
   description: string;
+  index: number;
   comingSoon?: boolean;
 }) {
   const content = (
     <>
       <div className="h-1.5 bg-runfree-grad" />
       <div className="flex flex-1 flex-col p-6">
-        <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-runfree-pink text-runfree-magentaDeep">
-          {icon}
-        </span>
+        <div className="flex items-start justify-between">
+          <span
+            className={`flex h-12 w-12 items-center justify-center rounded-xl text-white shadow-sm ${
+              comingSoon ? "bg-gray-300" : "bg-runfree-grad"
+            }`}
+          >
+            {icon}
+          </span>
+          <span className="font-display text-2xl font-extrabold text-gray-100">
+            {String(index).padStart(2, "0")}
+          </span>
+        </div>
         <h2 className="mt-4 font-display text-lg font-bold text-runfree-ink">
           {title}
         </h2>

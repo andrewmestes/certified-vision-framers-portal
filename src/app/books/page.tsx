@@ -30,6 +30,7 @@ type BookFile = {
 type BookShelf = {
   id: string;
   name: string;
+  amazonUrl: string;
   fullBook: BookFile | null;
   visualSummary: BookFile | null;
   chapters: BookFile[];
@@ -54,6 +55,17 @@ const COVERS: Record<string, string> = {
 function coverFor(name: string): string | null {
   return COVERS[name.toLowerCase().trim()] || null;
 }
+
+// Not part of the live-mirrored shelf — Will has no facilitator resources
+// tied to this one yet, just the book itself.
+const CALLING_BOOK = {
+  title: "Calling: For the Best of Us",
+  description:
+    "Will's exploration of vocational calling — the piece of the process that gets personal. Where Younique names an individual's unique design, Calling pushes further into what it means to actually live inside that design as a leader. Worth having alongside Younique when a framer is helping someone see their own place in the process, not just the church's.",
+  amazonUrl: `https://www.amazon.com/s?k=${encodeURIComponent(
+    "Calling For the Best of Us Will Mancini"
+  )}`,
+};
 
 function prettySize(bytes: number | null) {
   if (!bytes) return "";
@@ -187,7 +199,7 @@ export default function BooksPage() {
                 className="group flex w-24 flex-col items-center gap-2 outline-none sm:w-32"
               >
                 <span
-                  className={`relative aspect-[3/4] w-24 overflow-hidden rounded-xl bg-white shadow-sm ring-1 transition duration-300 ease-out sm:w-32 ${
+                  className={`relative aspect-[2/3] w-24 overflow-hidden rounded-xl bg-white shadow-sm ring-1 transition duration-300 ease-out sm:w-32 ${
                     isActive
                       ? "-translate-y-1 scale-105 shadow-lg ring-2 ring-runfree-magenta"
                       : "ring-gray-200 group-hover:-translate-y-1 group-hover:scale-105 group-hover:shadow-lg"
@@ -198,7 +210,8 @@ export default function BooksPage() {
                       src={cover}
                       alt={`${b.name} cover`}
                       fill
-                      className="object-cover"
+                      sizes="(min-width: 640px) 128px, 96px"
+                      className="object-contain"
                     />
                   ) : (
                     <span className="flex h-full w-full items-center justify-center bg-runfree-indigo p-3 text-center text-xs font-semibold text-runfree-navy">
@@ -230,14 +243,24 @@ export default function BooksPage() {
 
         {active && (
           <div key={active.id} className="animate-rise space-y-8">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="font-display text-2xl font-extrabold text-runfree-ink">
+                {active.name}
+              </h2>
+              <a
+                href={active.amazonUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold text-runfree-magentaDeep ring-1 ring-runfree-magenta/30 transition hover:bg-runfree-pink/40"
+              >
+                Buy on Amazon
+                <ExternalIcon />
+              </a>
+            </div>
+
             {/* Featured: visual summary + full book */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <FeaturedCard
-                label="Visual Summary"
-                file={active.visualSummary}
-                emptyText="No visual summary yet"
-                onOpen={setPreview}
-              />
+              <VisualSummaryCard file={active.visualSummary} onOpen={setPreview} />
               <FeaturedCard
                 label="Full Book"
                 file={active.fullBook}
@@ -326,6 +349,33 @@ export default function BooksPage() {
           </div>
         )}
 
+        {/* Also from Will — no Drive resources, just the book itself. */}
+        <section className="mt-12 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200">
+          <div className="h-1 bg-runfree-grad" />
+          <div className="flex flex-col gap-5 p-6 sm:flex-row sm:items-center">
+            <div className="flex-1">
+              <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-runfree-magentaDeep">
+                Also from Will
+              </p>
+              <h2 className="mt-1 font-display text-lg font-bold text-runfree-ink">
+                {CALLING_BOOK.title}
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-gray-600">
+                {CALLING_BOOK.description}
+              </p>
+            </div>
+            <a
+              href={CALLING_BOOK.amazonUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-runfree-grad px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
+            >
+              Buy on Amazon
+              <ExternalIcon />
+            </a>
+          </div>
+        </section>
+
         {library.extras.length > 0 && (
           <section className="mt-12 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200">
             <header className="border-b border-gray-100 px-5 py-4">
@@ -409,5 +459,90 @@ function FeaturedCard({
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * The visual summary is, well, visual — it deserves more than a text row.
+ * The underlying files are PDFs (no page-image to thumbnail without adding
+ * a rendering pipeline), so instead of a literal page preview this gives it
+ * its own bold, infographic-styled tile so it reads as "the visual one" at
+ * a glance rather than looking like just another download link.
+ */
+function VisualSummaryCard({
+  file,
+  onOpen,
+}: {
+  file: BookFile | null;
+  onOpen: (f: BookFile) => void;
+}) {
+  return (
+    <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200">
+      {file ? (
+        <button
+          onClick={() => onOpen(file)}
+          className="group flex w-full flex-col text-left outline-none"
+        >
+          <div className="relative flex h-28 items-center justify-center overflow-hidden bg-runfree-grad">
+            <span
+              aria-hidden
+              className="absolute -bottom-6 -right-6 h-28 w-28 rounded-full bg-white/10"
+            />
+            <span
+              aria-hidden
+              className="absolute -left-4 -top-8 h-20 w-20 rounded-full bg-white/10"
+            />
+            <InfographicIcon />
+          </div>
+          <div className="p-5">
+            <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-runfree-magentaDeep">
+              Visual Summary
+            </p>
+            <h3 className="mt-1 font-display text-base font-bold text-runfree-ink">
+              {file.title}
+            </h3>
+            <span className="mt-4 inline-block rounded-lg bg-runfree-grad px-5 py-2 text-sm font-semibold text-white transition group-hover:opacity-90">
+              Open
+            </span>
+          </div>
+        </button>
+      ) : (
+        <div className="p-5">
+          <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-runfree-magentaDeep">
+            Visual Summary
+          </p>
+          <p className="mt-2 text-sm text-gray-500">No visual summary yet</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function InfographicIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      className="relative h-10 w-10 text-white"
+      aria-hidden="true"
+    >
+      <rect x="3" y="3" width="7" height="18" rx="1.5" fill="currentColor" fillOpacity="0.9" />
+      <rect x="12" y="9" width="7" height="12" rx="1.5" fill="currentColor" fillOpacity="0.65" />
+      <circle cx="18.5" cy="4.5" r="2.5" fill="currentColor" fillOpacity="0.9" />
+    </svg>
+  );
+}
+
+function ExternalIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" className="h-3.5 w-3.5" aria-hidden="true">
+      <path
+        d="M7 4h9v9M16 4L4 16"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }

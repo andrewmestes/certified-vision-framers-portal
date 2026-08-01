@@ -9,12 +9,12 @@ export type ModuleMeta = {
 };
 
 export const MODULE_META: Record<number, ModuleMeta> = {
-  1: { stage: "Stage 1 · Problem", mantra: "Move the Finish Line!" },
-  2: { stage: "Stage 2 · Potential", mantra: "Become a Hero-Maker!" },
-  3: { stage: "Stage 3 · Pathway", mantra: "Build a Training Center!" },
-  4: { stage: "Stage 4 · People", mantra: "Empower Each One!" },
-  5: { stage: "Stage 5 · Portal", mantra: "Design the Culture!" },
-  6: { stage: "Stage 6 · Picture", mantra: "Create the Future!" },
+  1: { stage: "Module 1 · Problem", mantra: "Move the Finish Line!" },
+  2: { stage: "Module 2 · Potential", mantra: "Become a Hero-Maker!" },
+  3: { stage: "Module 3 · Pathway", mantra: "Build a Training Center!" },
+  4: { stage: "Module 4 · People", mantra: "Empower Each One!" },
+  5: { stage: "Module 5 · Portal", mantra: "Design the Culture!" },
+  6: { stage: "Module 6 · Picture", mantra: "Create the Future!" },
 };
 
 /** True for the six numbered process modules, false for the extra folders. */
