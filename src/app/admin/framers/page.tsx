@@ -6,6 +6,8 @@ import { supabase } from "@/lib/supabase";
 import { getCurrentFramer, logout } from "@/lib/auth";
 import PortalHeader from "@/components/PortalHeader";
 
+type AccountStatus = "no_account" | "pending" | "confirmed";
+
 type Framer = {
   id: string;
   email: string;
@@ -13,6 +15,7 @@ type Framer = {
   is_admin: boolean;
   created_at: string;
   hasAccount: boolean;
+  accountStatus: AccountStatus;
 };
 
 type Me = { id: string; email: string; name: string; is_admin: boolean };
@@ -30,6 +33,7 @@ export default function FramersAdminPage() {
   const [notice, setNotice] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [resendingId, setResendingId] = useState<string | null>(null);
 
   const router = useRouter();
 
@@ -143,6 +147,28 @@ export default function FramersAdminPage() {
     }
   }
 
+  async function resendConfirmation(f: Framer) {
+    setError("");
+    setResendingId(f.id);
+
+    try {
+      const res = await authedFetch("/api/admin/framers", {
+        method: "PUT",
+        body: JSON.stringify({ email: f.email }),
+      });
+      const body = await res.json();
+
+      if (!res.ok) {
+        setError(body.error || "Could not resend that email.");
+        return;
+      }
+
+      flash(`Confirmation email resent to ${f.email}.`);
+    } finally {
+      setResendingId(null);
+    }
+  }
+
   async function remove(f: Framer) {
     setError("");
     setBusyId(f.id);
@@ -175,7 +201,12 @@ export default function FramersAdminPage() {
       )
     : framers;
 
-  const pending = framers.filter((f) => !f.hasAccount).length;
+  const notSignedUp = framers.filter(
+    (f) => f.accountStatus === "no_account"
+  ).length;
+  const unconfirmed = framers.filter(
+    (f) => f.accountStatus === "pending"
+  ).length;
 
   if (loading) {
     return (
@@ -260,7 +291,8 @@ export default function FramersAdminPage() {
           />
           <span className="text-sm text-gray-500">
             {framers.length} on the list
-            {pending > 0 && ` · ${pending} not signed up yet`}
+            {notSignedUp > 0 && ` · ${notSignedUp} not signed up yet`}
+            {unconfirmed > 0 && ` · ${unconfirmed} unconfirmed`}
           </span>
         </div>
 
@@ -301,13 +333,31 @@ export default function FramersAdminPage() {
 
                     <span
                       className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                        f.hasAccount
+                        f.accountStatus === "confirmed"
                           ? "bg-green-50 text-green-700"
-                          : "bg-amber-50 text-amber-700"
+                          : f.accountStatus === "pending"
+                            ? "bg-amber-50 text-amber-700"
+                            : "bg-gray-100 text-gray-500"
                       }`}
                     >
-                      {f.hasAccount ? "Signed up" : "Not signed up yet"}
+                      {f.accountStatus === "confirmed"
+                        ? "Signed up"
+                        : f.accountStatus === "pending"
+                          ? "Unconfirmed"
+                          : "Not signed up yet"}
                     </span>
+
+                    {f.accountStatus === "pending" && (
+                      <button
+                        onClick={() => resendConfirmation(f)}
+                        disabled={resendingId === f.id}
+                        className="rounded-lg px-3 py-1.5 text-xs font-semibold text-runfree-magentaDeep ring-1 ring-runfree-magenta/30 transition hover:bg-runfree-pink/40 disabled:opacity-50"
+                      >
+                        {resendingId === f.id
+                          ? "Sending…"
+                          : "Resend confirmation"}
+                      </button>
+                    )}
 
                     <div className="flex items-center gap-2">
                       <button

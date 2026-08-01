@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabase, supabaseAdmin } from "@/lib/supabase";
 
 /**
  * Admin management of the certified framers allowlist.
@@ -50,8 +50,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Which of these emails have actually created a login?
-  const accounts = new Set<string>();
+  // Which of these emails have created a login, and is it confirmed yet?
+  // confirmed_at covers both password signups (set on email click) and
+  // OAuth signups (set immediately, since Google already vouched for the
+  // address) — checking it alone gives the right answer for both paths.
+  const confirmedAt = new Map<string, string | null>();
   let page = 1;
   for (;;) {
     const { data, error: listErr } = await supabaseAdmin.auth.admin.listUsers({
@@ -59,18 +62,56 @@ export async function GET(req: NextRequest) {
       perPage: 1000,
     });
     if (listErr) break;
-    data.users.forEach((u) => u.email && accounts.add(u.email.toLowerCase()));
+    data.users.forEach((u) => {
+      if (u.email) confirmedAt.set(u.email.toLowerCase(), u.confirmed_at ?? null);
+    });
     if (data.users.length < 1000) break;
     page += 1;
   }
 
   return NextResponse.json({
     callerEmail: caller.email,
-    framers: (framers || []).map((f) => ({
-      ...f,
-      hasAccount: accounts.has(f.email.toLowerCase()),
-    })),
+    framers: (framers || []).map((f) => {
+      const key = f.email.toLowerCase();
+      const hasAccount = confirmedAt.has(key);
+      const isConfirmed = hasAccount && Boolean(confirmedAt.get(key));
+      return {
+        ...f,
+        hasAccount,
+        accountStatus: !hasAccount
+          ? "no_account"
+          : isConfirmed
+            ? "confirmed"
+            : "pending",
+      };
+    }),
   });
+}
+
+/** Re-send the branded confirmation email to someone stuck unconfirmed. */
+export async function PUT(req: NextRequest) {
+  const caller = await requireAdmin(req);
+  if (!caller) return denied();
+
+  const { email } = await req.json();
+  const cleanEmail = String(email || "").trim().toLowerCase();
+
+  if (!cleanEmail) {
+    return NextResponse.json({ error: "Missing email" }, { status: 400 });
+  }
+
+  // Public GoTrue endpoint (no admin key needed) — it re-sends whatever
+  // template is configured for "Confirm signup", same as a fresh signup would.
+  const { error } = await supabase.auth.resend({
+    type: "signup",
+    email: cleanEmail,
+  });
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true });
 }
 
 /** POST — add someone to the allowlist. */
