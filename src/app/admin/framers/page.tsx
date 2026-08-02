@@ -5,6 +5,27 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getCurrentFramer, logout } from "@/lib/auth";
 import PortalHeader from "@/components/PortalHeader";
+import { parseCsv } from "@/lib/csv";
+
+type ImportRowResult = {
+  row: number;
+  email: string;
+  name: string;
+  status: "added" | "already_listed" | "invalid" | "duplicate" | "failed";
+  detail?: string;
+};
+
+type ImportResponse = {
+  summary: {
+    total: number;
+    added: number;
+    alreadyListed: number;
+    invalid: number;
+    duplicate: number;
+  };
+  results: ImportRowResult[];
+  ghl?: { configured: boolean; tagged?: number; notFound?: number };
+};
 
 type AccountStatus = "no_account" | "pending" | "confirmed";
 
@@ -61,6 +82,11 @@ export default function FramersAdminPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [sendingId, setSendingId] = useState<string | null>(null);
+
+  const [importOpen, setImportOpen] = useState(false);
+  const [csvText, setCsvText] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<ImportResponse | null>(null);
 
   const router = useRouter();
 
@@ -240,6 +266,50 @@ export default function FramersAdminPage() {
     }
   }
 
+  /** Parsed live so the admin sees the row count before committing. */
+  const parsed = useMemo(
+    () => (csvText.trim() ? parseCsv(csvText) : null),
+    [csvText]
+  );
+
+  async function handleCsvFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportResult(null);
+    setCsvText(await file.text());
+    // Let the same file be picked again after a correction.
+    e.target.value = "";
+  }
+
+  async function runImport() {
+    if (!parsed || parsed.rows.length === 0) return;
+    setError("");
+    setWarning("");
+    setImportResult(null);
+    setImporting(true);
+
+    try {
+      const res = await authedFetch("/api/admin/framers/import", {
+        method: "POST",
+        body: JSON.stringify({ rows: parsed.rows }),
+      });
+      const body = await res.json();
+
+      if (!res.ok) {
+        setError(body.error || "Could not import that file.");
+        return;
+      }
+
+      setImportResult(body);
+      flash(
+        `${body.summary.added} added from ${body.summary.total} row${body.summary.total === 1 ? "" : "s"}.`
+      );
+      await load();
+    } finally {
+      setImporting(false);
+    }
+  }
+
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -387,6 +457,156 @@ export default function FramersAdminPage() {
               </p>
             )}
           </form>
+        </div>
+
+        {/* Bulk import */}
+        <div className="mb-8 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200">
+          <div className="h-1.5 bg-runfree-grad" />
+          <div className="p-6">
+            <div className="flex flex-wrap items-center gap-3">
+              <h2 className="font-display text-lg font-bold text-runfree-ink">
+                Import a cohort
+              </h2>
+              <button
+                onClick={() => setImportOpen((v) => !v)}
+                className="ml-auto rounded-lg px-3 py-1.5 text-sm font-medium text-gray-600 ring-1 ring-gray-200 transition hover:text-runfree-magentaDeep hover:ring-runfree-magenta/40"
+              >
+                {importOpen ? "Close" : "Import CSV"}
+              </button>
+            </div>
+
+            {importOpen && (
+              <div className="mt-4 space-y-4">
+                <p className="text-sm leading-relaxed text-gray-600">
+                  Paste rows or choose a .csv file. A header row is optional —
+                  columns named <em>name</em> and <em>email</em> are detected,
+                  and otherwise whichever cell looks like an address is used.
+                  This adds people to the list only; it doesn&rsquo;t create
+                  logins or send anything, so nobody is emailed until you
+                  invite them.
+                </p>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <input
+                    type="file"
+                    accept=".csv,text/csv,text/plain"
+                    onChange={handleCsvFile}
+                    className="text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-runfree-pink file:px-4 file:py-2 file:text-sm file:font-semibold file:text-runfree-magentaDeep hover:file:bg-runfree-pink/70"
+                  />
+                </div>
+
+                <textarea
+                  value={csvText}
+                  onChange={(e) => setCsvText(e.target.value)}
+                  rows={6}
+                  spellCheck={false}
+                  placeholder={"name,email\nJane Smith,jane@church.org\nSam Lee,sam@church.org"}
+                  className="w-full rounded-lg border border-gray-300 px-4 py-3 font-mono text-xs outline-none transition placeholder:text-gray-400 focus:border-runfree-magenta focus:ring-2 focus:ring-runfree-magenta/25"
+                />
+
+                {parsed && (
+                  <div className="rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                    <strong className="font-semibold text-runfree-ink">
+                      {parsed.rows.length}
+                    </strong>{" "}
+                    {parsed.rows.length === 1 ? "person" : "people"} found
+                    {parsed.detected.email &&
+                      ` · email column "${parsed.detected.email}"`}
+                    {parsed.detected.name &&
+                      ` · name column "${parsed.detected.name}"`}
+                    {parsed.skipped > 0 &&
+                      ` · ${parsed.skipped} line${parsed.skipped === 1 ? "" : "s"} with no email skipped`}
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    onClick={runImport}
+                    disabled={!parsed || parsed.rows.length === 0 || importing}
+                    className="rounded-lg bg-runfree-grad px-6 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-40"
+                  >
+                    {importing
+                      ? "Importing…"
+                      : parsed
+                        ? `Import ${parsed.rows.length}`
+                        : "Import"}
+                  </button>
+                  {csvText && (
+                    <button
+                      onClick={() => {
+                        setCsvText("");
+                        setImportResult(null);
+                      }}
+                      className="text-sm text-gray-500 transition hover:text-gray-700"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+
+                {importResult && (
+                  <div className="rounded-lg border border-gray-200 bg-white">
+                    <div className="flex flex-wrap gap-x-5 gap-y-1 border-b border-gray-100 px-4 py-3 text-sm">
+                      <span className="font-semibold text-green-700">
+                        {importResult.summary.added} added
+                      </span>
+                      {importResult.summary.alreadyListed > 0 && (
+                        <span className="text-gray-500">
+                          {importResult.summary.alreadyListed} already listed
+                        </span>
+                      )}
+                      {importResult.summary.duplicate > 0 && (
+                        <span className="text-gray-500">
+                          {importResult.summary.duplicate} repeated in file
+                        </span>
+                      )}
+                      {importResult.summary.invalid > 0 && (
+                        <span className="text-red-600">
+                          {importResult.summary.invalid} invalid
+                        </span>
+                      )}
+                      {importResult.ghl?.configured && (
+                        <span className="text-gray-500">
+                          {importResult.ghl.tagged} tagged in GoHighLevel
+                          {importResult.ghl.notFound
+                            ? `, ${importResult.ghl.notFound} not found there`
+                            : ""}
+                        </span>
+                      )}
+                    </div>
+
+                    {importResult.results.some(
+                      (r) => r.status === "invalid" || r.status === "duplicate"
+                    ) && (
+                      <ul className="max-h-40 divide-y divide-gray-100 overflow-y-auto text-sm">
+                        {importResult.results
+                          .filter(
+                            (r) =>
+                              r.status === "invalid" || r.status === "duplicate"
+                          )
+                          .map((r) => (
+                            <li
+                              key={`${r.row}-${r.email}`}
+                              className="flex items-center gap-3 px-4 py-2"
+                            >
+                              <span className="w-12 shrink-0 text-xs text-gray-400">
+                                Row {r.row}
+                              </span>
+                              <span className="min-w-0 flex-1 truncate text-gray-600">
+                                {r.email || r.name || "(blank)"}
+                              </span>
+                              <span className="shrink-0 text-xs text-red-600">
+                                {r.detail || r.status}
+                              </span>
+                            </li>
+                          ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Filters */}

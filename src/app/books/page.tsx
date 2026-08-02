@@ -519,45 +519,41 @@ function VisualSummaryCard({
   return (
     <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200">
       {file ? (
+        // Laid out side by side rather than stacked. A full-width page preview
+        // above the text pushed the chapter list off the bottom of the screen,
+        // so the summary was showing at the cost of the thing most framers
+        // came for. The page stays legible at this size, and clicking through
+        // opens it full size.
         <button
           onClick={() => onOpen(file)}
-          className="group flex w-full flex-col text-left outline-none ring-runfree-magenta/60 focus-visible:ring-2 focus-visible:ring-inset"
+          className="group flex w-full items-center gap-4 p-4 text-left outline-none ring-runfree-magenta/60 focus-visible:ring-2 focus-visible:ring-inset"
         >
-          {/* The summary's own first page, which says far more about what it
-              is than any icon could. Falls back to the branded tile when the
-              render can't be produced. */}
-          {/* object-contain, not cover: these pages are landscape infographics
-              and cropping them to a strip threw away the thing that makes a
-              visual summary worth showing. */}
-          <div className="relative flex aspect-[16/10] items-center justify-center overflow-hidden bg-runfree-indigo">
+          <span className="relative flex aspect-[16/10] w-32 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-runfree-indigo ring-1 ring-black/5 sm:w-40">
             <PdfThumbnail
               fileId={file.id}
               fetchBytes={fetchBytes}
-              width={520}
+              width={320}
               sizeBytes={file.sizeBytes}
               className="h-full w-full object-contain"
               fallback={
                 <span className="relative flex h-full w-full items-center justify-center overflow-hidden bg-runfree-grad">
-                  <span
-                    aria-hidden
-                    className="absolute -bottom-6 -right-6 h-28 w-28 rounded-full bg-white/10"
-                  />
                   <InfographicIcon />
                 </span>
               }
             />
-          </div>
-          <div className="p-5">
-            <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-runfree-magentaDeep">
+          </span>
+
+          <span className="min-w-0 flex-1">
+            <span className="block text-[11px] font-bold uppercase tracking-[0.08em] text-runfree-magentaDeep">
               Visual Summary
-            </p>
-            <h3 className="mt-1 font-display text-base font-bold text-runfree-ink">
+            </span>
+            <span className="mt-1 block font-display text-base font-bold leading-snug text-runfree-ink">
               {file.title}
-            </h3>
-            <span className="mt-4 inline-block rounded-lg bg-runfree-grad px-5 py-2 text-sm font-semibold text-white transition group-hover:opacity-90">
+            </span>
+            <span className="mt-3 inline-block rounded-lg bg-runfree-grad px-4 py-1.5 text-sm font-semibold text-white transition group-hover:opacity-90">
               Open
             </span>
-          </div>
+          </span>
         </button>
       ) : (
         <div className="p-5">

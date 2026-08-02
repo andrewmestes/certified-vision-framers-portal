@@ -1,0 +1,82 @@
+<!-- Supabase → Authentication → Emails → "Invite user"
+     Subject: You're invited — RunFree Certified Vision Framers Portal
+
+     This one IS used: the admin screen's Invite button calls
+     inviteUserByEmail() for anyone on the allowlist who has never created a
+     login. Without this template Supabase sends its own unbranded default,
+     which reads like a system notice rather than a welcome to something the
+     recipient paid to be part of.
+
+     Table-based with inline styles on purpose: Outlook ignores <style> blocks
+     and most CSS. The gradient bar degrades to solid magenta where gradients
+     aren't supported, which is why bgcolor is set alongside it. -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f4f5f9;margin:0;padding:32px 12px;">
+  <tr>
+    <td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(31,55,140,0.08);">
+
+        <!-- Brand bar -->
+        <tr>
+          <td bgcolor="#E43D96" style="height:6px;line-height:6px;font-size:0;background:linear-gradient(90deg,#E43D96,#F15A25);">&nbsp;</td>
+        </tr>
+
+        <tr>
+          <td style="padding:40px 40px 32px 40px;font-family:'Poppins',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+
+            <p style="margin:0 0 8px 0;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#C21F73;">
+              RunFree
+            </p>
+
+            <h1 style="margin:0 0 16px 0;font-size:24px;line-height:1.25;font-weight:800;color:#2B2A55;">
+              Your portal access is ready
+            </h1>
+
+            <p style="margin:0 0 24px 0;font-size:15px;line-height:1.65;color:#4b5563;">
+              You've been added as a Certified Vision Framer. Your portal has every
+              certification handout, the Digital Facilitator's Guide, the training
+              videos, and Will's books &mdash; all in one place.
+            </p>
+
+            <p style="margin:0 0 24px 0;font-size:15px;line-height:1.65;color:#4b5563;">
+              Use the button below to set your password and sign in.
+            </p>
+
+            <!-- Button -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px 0;">
+              <tr>
+                <td bgcolor="#E43D96" style="border-radius:8px;background:linear-gradient(90deg,#E43D96,#F15A25);">
+                  <a href="{{ .ConfirmationURL }}"
+                     style="display:inline-block;padding:14px 32px;font-family:'Poppins',Helvetica,Arial,sans-serif;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;">
+                    Set up my account
+                  </a>
+                </td>
+              </tr>
+            </table>
+
+            <p style="margin:0 0 24px 0;font-size:13px;line-height:1.6;color:#6b7280;">
+              Button not working? Paste this into your browser:<br>
+              <a href="{{ .ConfirmationURL }}" style="color:#C21F73;word-break:break-all;">{{ .ConfirmationURL }}</a>
+            </p>
+
+            <hr style="border:none;border-top:1px solid #e5e7eb;margin:0 0 20px 0;">
+
+            <p style="margin:0;font-size:13px;line-height:1.6;color:#9ca3af;">
+              Not expecting this? You can ignore it and nothing will happen. If you
+              think it reached you by mistake, reply and let us know.
+            </p>
+
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:0 40px 32px 40px;font-family:'Poppins',Helvetica,Arial,sans-serif;">
+            <p style="margin:0;font-size:12px;line-height:1.6;color:#9ca3af;">
+              RunFree &middot; Certified Vision Framers
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>

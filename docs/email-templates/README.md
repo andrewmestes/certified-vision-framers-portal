@@ -13,9 +13,14 @@ Templates). Paste the file body into the message field and set the subject.
 | --- | --- | --- |
 | Confirm signup | `confirm-signup.html` | Confirm your email — RunFree Vision Framers Portal |
 | Reset password | `reset-password.html` | Reset your password — RunFree Vision Framers Portal |
+| Invite user | `invite.html` | You're invited — RunFree Certified Vision Framers Portal |
 
-Leave the others (Magic Link, Invite, Change Email) alone unless you start
-using those flows — the portal doesn't.
+Leave Magic Link and Change Email alone — the portal doesn't use those flows.
+
+**Invite is used.** The Invite button on Admin → Certified Vision Framers
+calls `inviteUserByEmail()` for anyone on the allowlist who has never created
+a login. Until this template is pasted in, those people receive Supabase's
+unbranded default, which reads like a system notice rather than a welcome.
 
 ## Why they're built this way
 

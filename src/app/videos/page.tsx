@@ -220,8 +220,18 @@ export default function VideosPage() {
           </div>
         ) : (
           <div className="space-y-10">
-            {groups.map((group) => (
+            {groups.map((group, gi) => (
               <section key={group.key}>
+                {/* A full-width rule between modules. Without it the grid ran
+                    on as one continuous field of cards and the group headings
+                    had to do all the work of signalling a new section. */}
+                {gi > 0 && (
+                  <div
+                    aria-hidden
+                    className="mb-10 h-px w-full bg-gradient-to-r from-transparent via-runfree-magenta/35 to-transparent"
+                  />
+                )}
+
                 {/* A fixed-width icon slot keeps every group title on the same
                     left edge, whether or not the group is one of the six
                     numbered tools. Orientation used to sit out of line. */}

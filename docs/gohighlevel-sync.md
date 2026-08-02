@@ -1,0 +1,97 @@
+# GoHighLevel ↔ portal sync
+
+Access is meant to stay in step in both directions: tagging someone in GHL
+should let them into the portal, and adding someone in the portal should tag
+them in GHL. The two directions work differently and are configured
+separately, so it's worth being clear about which half is live.
+
+## Current status
+
+| Direction | Mechanism | Works today |
+| --- | --- | --- |
+| GHL → portal | Workflow webhook | **Yes**, once the workflows below exist |
+| Portal → GHL | GHL REST API | **No** — `GHL_API_KEY` is empty |
+
+Nothing breaks while the second half is off. Adding a framer in the portal
+still grants access immediately; it just doesn't tag them in the CRM, and the
+admin screen says so rather than implying it happened.
+
+---
+
+## GHL → portal (tag drives access)
+
+Driven by a GHL Workflow with a Webhook action rather than by polling the API,
+so there's no key to rotate and no delay.
+
+**Endpoint:** `POST https://<your-portal-domain>/api/webhooks/ghl`
+**Auth:** header `x-portal-secret` must equal `GHL_WEBHOOK_SECRET` in Vercel.
+
+### Workflow 1 — grant access
+
+1. **Trigger:** Contact Tag → tag added → `Certified Vision Framer`
+2. **Action:** Webhook
+   - Method `POST`, URL as above
+   - Header `x-portal-secret: <the value of GHL_WEBHOOK_SECRET>`
+   - Body includes at least `email`; `first_name`, `last_name`, and
+     `contact_id` are used when present
+
+### Workflow 2 — revoke access
+
+Same as above but triggered on **tag removed**, and add a Custom Data pair:
+
+```
+action = remove
+```
+
+That is the only thing distinguishing a revoke from a grant — without it the
+webhook treats the call as an add.
+
+### Checking it
+
+`GET /api/webhooks/ghl` returns `{"status":"ok","configured":true}` in a
+browser, which confirms the route is deployed and the secret is set. It does
+not prove the workflows exist — for that, add the tag to a test contact and
+watch them appear on Admin → Certified Vision Framers.
+
+Every call is written to the `ghl_sync_log` table with success or failure, so
+a workflow that's firing but failing is visible there.
+
+---
+
+## Portal → GHL (adding a framer tags them)
+
+Implemented in `src/lib/ghl.ts` and called from the add, remove, and CSV
+import paths. Currently inert.
+
+**To turn it on:** set `GHL_API_KEY` in Vercel to a Location API key
+(GHL → Settings → Business Profile → API Key), then redeploy.
+
+Once set:
+
+- Adding a framer tags that contact `Certified Vision Framer`
+- Removing a framer removes the tag
+- A CSV import tags everyone it added, in batches of five
+
+Tagging is best-effort by design. Portal access is granted first and a CRM
+failure never rolls it back — but the failure is surfaced to the admin rather
+than swallowed, so nobody is told a tag was applied when it wasn't. If no GHL
+contact matches the address, the admin is told that too.
+
+### A caveat worth knowing
+
+`src/lib/ghl.ts` targets the **v1 REST API** (`rest.gohighlevel.com/v1`),
+which authenticates with a Location API key. GHL has been steering people to
+v2 with OAuth. v1 still works and is far simpler for a single location, but if
+GHL retires it, the client in that file is the only thing that needs
+rewriting — the call sites won't change.
+
+---
+
+## The loop question
+
+Tagging in GHL fires the webhook, which adds the framer in the portal. The
+portal doesn't then call back out to GHL, because the tag is already there —
+so there's no cycle. The reverse holds too: tagging from the portal doesn't
+trigger the inbound webhook to do anything meaningful, since the webhook
+treats an already-listed person as `already_present` and only refreshes their
+`ghl_contact_id`.
