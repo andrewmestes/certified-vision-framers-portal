@@ -103,13 +103,12 @@ export async function fetchDriveFile(
 
   const meta = await drive.files.get({
     fileId,
-    fields: "name,mimeType,size",
+    fields: "name,mimeType",
     supportsAllDrives: true,
   });
 
   const sourceMime = meta.data.mimeType || "application/octet-stream";
   const name = meta.data.name || "download";
-  const declaredSize = meta.data.size || undefined;
   const exportTarget = EXPORT_AS[sourceMime];
 
   if (exportTarget) {
@@ -153,10 +152,19 @@ export async function fetchDriveFile(
     filename: name,
     status: res.status === 206 ? 206 : 200,
     contentRange: readHeader("content-range"),
-    // Falls back to the size from file metadata. pdf.js only attempts ranged
-    // reads when the first response states how long the file is, and a
-    // streamed body would otherwise go out chunked with no length at all.
-    contentLength: readHeader("content-length") ?? declaredSize,
+    /**
+     * Only reported for a partial response, and only from the actual media
+     * headers — never from file metadata.
+     *
+     * Declaring a length on the full streamed response looked harmless and
+     * broke every PDF preview: the browser waits for exactly that many bytes,
+     * and if the stream closes even slightly short the fetch never settles, so
+     * `arrayBuffer()` hangs forever and the card shimmers indefinitely. Letting
+     * the full response go out chunked is correct — the client reads until the
+     * stream ends.
+     */
+    contentLength:
+      res.status === 206 ? readHeader("content-length") : undefined,
   };
 }
 
