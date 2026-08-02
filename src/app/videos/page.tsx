@@ -95,6 +95,15 @@ export default function VideosPage() {
     init();
   }, [router]);
 
+  /**
+   * Navigation is a side effect, so it belongs here rather than in the render
+   * body. Calling router.replace() during render violates React's rules and,
+   * with reactStrictMode on, ran twice per mount.
+   */
+  useEffect(() => {
+    if (status === "denied") router.replace("/");
+  }, [status, router]);
+
   // Close the player on Escape
   useEffect(() => {
     if (!playing) return;
@@ -155,13 +164,8 @@ export default function VideosPage() {
 
   const total = groups.reduce((n, g) => n + g.videos.length, 0);
 
-  if (status === "checking") {
+  if (status === "checking" || status === "denied") {
     return <PageLoader label="Checking your access…" />;
-  }
-
-  if (status === "denied") {
-    router.replace("/");
-    return null;
   }
 
   return (

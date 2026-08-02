@@ -135,6 +135,15 @@ export default function BooksPage() {
     init();
   }, [router, load]);
 
+  /**
+   * Navigation is a side effect, so it belongs here rather than in the render
+   * body. Calling router.replace() during render violates React's rules and,
+   * with reactStrictMode on, ran twice per mount.
+   */
+  useEffect(() => {
+    if (status === "denied") router.replace("/");
+  }, [status, router]);
+
   async function handleSignOut() {
     await logout();
     router.replace("/auth/login");
@@ -182,11 +191,8 @@ export default function BooksPage() {
     []
   );
 
-  if (status === "checking") return <PageLoader label="Checking your access…" />;
-
-  if (status === "denied") {
-    router.replace("/");
-    return null;
+  if (status === "checking" || status === "denied") {
+    return <PageLoader label="Checking your access…" />;
   }
 
   const active = library.books.find((b) => b.id === activeId) || null;
@@ -218,7 +224,7 @@ export default function BooksPage() {
                 key={b.id}
                 onClick={() => setActiveId(b.id)}
                 aria-pressed={isActive}
-                className="group flex w-24 flex-col items-center outline-none sm:w-32"
+                className="group flex w-24 flex-col items-center rounded-xl outline-none ring-runfree-magenta/60 focus-visible:ring-2 focus-visible:ring-offset-2 sm:w-32"
               >
                 <span
                   className={`relative aspect-[2/3] w-24 overflow-hidden rounded-xl bg-white shadow-sm transition duration-300 ease-out sm:w-32 ${
@@ -499,7 +505,7 @@ function VisualSummaryCard({
       {file ? (
         <button
           onClick={() => onOpen(file)}
-          className="group flex w-full flex-col text-left outline-none"
+          className="group flex w-full flex-col text-left outline-none ring-runfree-magenta/60 focus-visible:ring-2 focus-visible:ring-inset"
         >
           {/* The summary's own first page, which says far more about what it
               is than any icon could. Falls back to the branded tile when the

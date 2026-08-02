@@ -42,7 +42,11 @@ export default function PortalHeader({
       <div className="h-1.5 bg-runfree-grad" />
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-wrap items-center gap-x-8 gap-y-3 border-b border-white/10 py-4">
+        {/* Logo and account controls hold one line at every width; the nav
+            drops to its own row on phones and scrolls sideways there rather
+            than wrapping to three stacked lines, which was costing over half
+            the fold before any content appeared. */}
+        <div className="flex flex-wrap items-center gap-x-8 gap-y-3 border-b border-white/10 py-3 sm:py-4">
           <a href="/" className="flex shrink-0 items-center">
             <Image
               src="/brand/runfree-logo-white.png"
@@ -54,14 +58,14 @@ export default function PortalHeader({
             />
           </a>
 
-          <nav className="flex flex-1 flex-wrap items-center justify-center gap-x-7 gap-y-2 sm:gap-x-9">
+          <nav className="-mx-4 order-last flex w-[calc(100%+2rem)] items-center gap-x-7 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:order-none sm:mx-0 sm:w-auto sm:flex-1 sm:justify-center sm:overflow-visible sm:px-0 sm:pb-0 sm:gap-x-9">
             {!backHref &&
               NAV_LINKS.map((link) => (
                 <a
                   key={link.href}
                   href={link.href}
                   title={link.title}
-                  className="text-sm font-bold uppercase tracking-wider text-white/70 transition hover:text-white"
+                  className="whitespace-nowrap text-sm font-bold uppercase tracking-wider text-white/70 transition hover:text-white"
                 >
                   {link.label}
                 </a>
@@ -69,7 +73,7 @@ export default function PortalHeader({
             {backHref && (
               <a
                 href={backHref}
-                className="text-sm font-bold uppercase tracking-wider text-white/70 transition hover:text-white"
+                className="whitespace-nowrap text-sm font-bold uppercase tracking-wider text-white/70 transition hover:text-white"
               >
                 {backLabel || "Back"}
               </a>
@@ -102,7 +106,7 @@ export default function PortalHeader({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-6 py-8">
+        <div className="flex flex-wrap items-center justify-between gap-6 py-6 sm:py-8">
           <div className="min-w-0">
             <h1 className="font-display text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
               {title}
@@ -112,6 +116,9 @@ export default function PortalHeader({
             )}
           </div>
 
+          {/* Hidden on phones: the certification mark is ceremony, and at this
+              width it wraps onto its own row and pushes the actual content
+              most of the way off the first screen. */}
           {badge && (
             <Image
               src="/brand/pivvot-badge-white.svg"
@@ -119,7 +126,7 @@ export default function PortalHeader({
               width={280}
               height={280}
               priority
-              className="h-24 w-auto shrink-0 opacity-95 sm:h-32"
+              className="hidden h-24 w-auto shrink-0 opacity-95 sm:block sm:h-32"
             />
           )}
         </div>

@@ -454,7 +454,9 @@ export default function FramersAdminPage() {
               dir={sortDir}
               onClick={() => toggleSort("added")}
             />
-            <span className="w-[13rem] shrink-0" />
+            {/* Aligns the header row with the action buttons below it, which
+                only sit in a fixed column once there's room for them. */}
+            <span className="hidden w-[13rem] shrink-0 lg:block" />
           </div>
 
           {shown.length === 0 ? (
@@ -511,7 +513,7 @@ export default function FramersAdminPage() {
                       })}
                     </span>
 
-                    <div className="flex w-[13rem] shrink-0 items-center justify-end gap-2">
+                    <div className="flex w-full shrink-0 items-center gap-2 lg:w-[13rem] lg:justify-end">
                       {needsEmail && (
                         <button
                           onClick={() => sendEmail(f)}

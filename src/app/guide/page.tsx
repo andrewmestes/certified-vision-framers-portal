@@ -82,6 +82,15 @@ export default function GuidePage() {
     init();
   }, [router]);
 
+  /**
+   * Navigation is a side effect, so it belongs here rather than in the render
+   * body. Calling router.replace() during render violates React's rules and,
+   * with reactStrictMode on, ran twice per mount.
+   */
+  useEffect(() => {
+    if (status === "denied") router.replace("/");
+  }, [status, router]);
+
   async function handleSignOut() {
     await logout();
     router.replace("/auth/login");
@@ -122,11 +131,8 @@ export default function GuidePage() {
     );
   }, []);
 
-  if (status === "checking") return <PageLoader label="Checking your access…" />;
-
-  if (status === "denied") {
-    router.replace("/");
-    return null;
+  if (status === "checking" || status === "denied") {
+    return <PageLoader label="Checking your access…" />;
   }
 
   return (

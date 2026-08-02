@@ -81,7 +81,7 @@ export default function ModuleNav({
                 <button
                   onClick={() => onSelect(m.id)}
                   aria-pressed={isActive}
-                  className="group flex w-full min-w-[104px] flex-col items-center outline-none"
+                  className="group flex w-full min-w-[104px] flex-col items-center rounded-xl outline-none ring-runfree-magenta/60 focus-visible:ring-2 focus-visible:ring-offset-2"
                 >
                   <span
                     className={`relative flex h-20 w-20 items-center justify-center rounded-full transition-transform duration-300 ease-out will-change-transform ${
