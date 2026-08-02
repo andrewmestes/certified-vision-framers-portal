@@ -9,6 +9,7 @@ import PortalHeader from "@/components/PortalHeader";
 import PageLoader from "@/components/PageLoader";
 import PortalFooter from "@/components/PortalFooter";
 import FilePreview, { PreviewFile } from "@/components/FilePreview";
+import PdfThumbnail from "@/components/PdfThumbnail";
 
 type Framer = {
   id: string;
@@ -86,6 +87,22 @@ export default function GuidePage() {
     router.replace("/auth/login");
   }
 
+  const fetchPdfBytes = useCallback(
+    async (id: string): Promise<ArrayBuffer | null> => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) return null;
+
+      const res = await fetch(`/api/guide/file/${id}`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (!res.ok) return null;
+      return res.arrayBuffer();
+    },
+    []
+  );
+
   const fetchBlobUrl = useCallback(async (id: string): Promise<string | null> => {
     const {
       data: { session },
@@ -147,6 +164,31 @@ export default function GuidePage() {
             <div className="p-8 text-center sm:p-10">
               {file ? (
                 <>
+                  {/* The guide's own cover page — a 168-page playbook deserves
+                      to show its face rather than sit behind a text link. */}
+                  <span className="mx-auto mb-6 block w-40 overflow-hidden rounded-lg shadow-lg ring-1 ring-black/10">
+                    <PdfThumbnail
+                      fileId={file.id}
+                      fetchBytes={fetchPdfBytes}
+                      width={320}
+                      sizeBytes={file.sizeBytes}
+                      className="block h-auto w-full"
+                      fallback={
+                        <span className="flex aspect-[8.5/11] w-full flex-col items-center justify-center gap-2 bg-runfree-navy px-3 text-center">
+                          <Image
+                            src="/brand/pivvot-badge-white.svg"
+                            alt=""
+                            width={120}
+                            height={120}
+                            className="h-14 w-auto opacity-90"
+                          />
+                          <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/70">
+                            Facilitator&rsquo;s Guide
+                          </span>
+                        </span>
+                      }
+                    />
+                  </span>
                   <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-runfree-magentaDeep">
                     The complete training playbook
                   </p>

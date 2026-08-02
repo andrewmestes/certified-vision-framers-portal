@@ -9,6 +9,7 @@ import PortalHeader from "@/components/PortalHeader";
 import PageLoader from "@/components/PageLoader";
 import PortalFooter from "@/components/PortalFooter";
 import FilePreview, { PreviewFile } from "@/components/FilePreview";
+import PdfThumbnail from "@/components/PdfThumbnail";
 
 type Framer = {
   id: string;
@@ -164,6 +165,23 @@ export default function BooksPage() {
     );
   }, []);
 
+  /** Raw bytes for the first-page preview, through the same gated endpoint. */
+  const fetchPdfBytes = useCallback(
+    async (id: string): Promise<ArrayBuffer | null> => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) return null;
+
+      const res = await fetch(`/api/books/file/${id}`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (!res.ok) return null;
+      return res.arrayBuffer();
+    },
+    []
+  );
+
   if (status === "checking") return <PageLoader label="Checking your access…" />;
 
   if (status === "denied") {
@@ -281,7 +299,11 @@ export default function BooksPage() {
 
             {/* Featured: visual summary + full book */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <VisualSummaryCard file={active.visualSummary} onOpen={setPreview} />
+              <VisualSummaryCard
+                file={active.visualSummary}
+                onOpen={setPreview}
+                fetchBytes={fetchPdfBytes}
+              />
               <FeaturedCard
                 label="Full Book"
                 file={active.fullBook}
@@ -466,9 +488,11 @@ function FeaturedCard({
 function VisualSummaryCard({
   file,
   onOpen,
+  fetchBytes,
 }: {
   file: BookFile | null;
   onOpen: (f: BookFile) => void;
+  fetchBytes: (id: string) => Promise<ArrayBuffer | null>;
 }) {
   return (
     <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200">
@@ -477,16 +501,26 @@ function VisualSummaryCard({
           onClick={() => onOpen(file)}
           className="group flex w-full flex-col text-left outline-none"
         >
-          <div className="relative flex h-28 items-center justify-center overflow-hidden bg-runfree-grad">
-            <span
-              aria-hidden
-              className="absolute -bottom-6 -right-6 h-28 w-28 rounded-full bg-white/10"
+          {/* The summary's own first page, which says far more about what it
+              is than any icon could. Falls back to the branded tile when the
+              render can't be produced. */}
+          <div className="relative h-36 overflow-hidden bg-runfree-indigo">
+            <PdfThumbnail
+              fileId={file.id}
+              fetchBytes={fetchBytes}
+              width={420}
+              sizeBytes={file.sizeBytes}
+              className="h-full w-full object-cover object-top"
+              fallback={
+                <span className="relative flex h-full w-full items-center justify-center overflow-hidden bg-runfree-grad">
+                  <span
+                    aria-hidden
+                    className="absolute -bottom-6 -right-6 h-28 w-28 rounded-full bg-white/10"
+                  />
+                  <InfographicIcon />
+                </span>
+              }
             />
-            <span
-              aria-hidden
-              className="absolute -left-4 -top-8 h-20 w-20 rounded-full bg-white/10"
-            />
-            <InfographicIcon />
           </div>
           <div className="p-5">
             <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-runfree-magentaDeep">

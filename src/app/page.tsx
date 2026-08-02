@@ -23,6 +23,38 @@ export default function HubPage() {
   const router = useRouter();
 
   useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+
+    /**
+     * Supabase only honours a `redirectTo` that appears in the project's
+     * Redirect URLs allowlist; anything else silently falls back to the Site
+     * URL, which is this page. So a password-reset or invite link can land
+     * here with a recovery token in the hash instead of on the screen that
+     * asks for a new password — the user ends up signed in but never gets to
+     * set one, and is locked out again next time.
+     *
+     * Forwarding on the token keeps that flow working whatever the allowlist
+     * says. Fixing the allowlist is still worth doing; this makes the portal
+     * not depend on it.
+     */
+    const hash = window.location.hash;
+    if (hash.includes("type=recovery")) {
+      window.location.replace(`/auth/reset-password${hash}`);
+      return;
+    }
+
+    // The hash above is a fast path, but the Supabase client has
+    // detectSessionInUrl on by default and may have already consumed and
+    // cleared it before this effect runs. PASSWORD_RECOVERY is the event it
+    // emits in that case, so listen for it too rather than relying on
+    // winning that race.
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        router.replace("/auth/reset-password");
+      }
+    });
+    unsubscribe = () => sub.subscription.unsubscribe();
+
     async function init() {
       const {
         data: { user },
@@ -43,6 +75,8 @@ export default function HubPage() {
       setStatus("ready");
     }
     init();
+
+    return () => unsubscribe?.();
   }, [router]);
 
   async function handleSignOut() {
@@ -153,19 +187,20 @@ function HubCard({
 }) {
   if (comingSoon) {
     return (
-      <div className="flex flex-col overflow-hidden rounded-2xl bg-gray-100 opacity-80">
+      <div className="flex flex-col overflow-hidden rounded-2xl bg-white ring-1 ring-gray-200">
+        <div className="h-1 bg-gray-200" />
         <div className="flex flex-1 flex-col p-6">
-          <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-300 text-white shadow-sm">
+          <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 text-gray-400">
             {icon}
           </span>
-          <h2 className="mt-4 font-display text-lg font-bold text-gray-600">
+          <h2 className="mt-4 font-display text-lg font-bold text-gray-500">
             {title}
           </h2>
-          <p className="mt-2 flex-1 text-sm leading-relaxed text-gray-500">
+          <p className="mt-2 flex-1 text-sm leading-relaxed text-gray-400">
             {description}
           </p>
           <div className="mt-4">
-            <span className="inline-flex rounded-full bg-white px-3 py-1 text-xs font-semibold text-gray-500">
+            <span className="inline-flex rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-500">
               Coming soon
             </span>
           </div>
@@ -174,23 +209,38 @@ function HubCard({
     );
   }
 
+  /**
+   * Softened from a full-bleed gradient wash. The colour now sits in the
+   * icon chip and a thin accent rule instead of flooding the whole card,
+   * which keeps the brand present but lets the type sit on white where it
+   * reads properly — closer to how a professional certification portal
+   * carries itself, without going grey and corporate.
+   */
   return (
     <a
       href={href}
-      className="group flex flex-col overflow-hidden rounded-2xl bg-runfree-grad shadow-md transition duration-200 hover:-translate-y-1 hover:shadow-xl"
+      className="group relative flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-200 transition duration-200 hover:-translate-y-1 hover:shadow-lg hover:ring-runfree-magenta/35"
     >
-      <div className="flex flex-1 flex-col p-6">
-        <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 text-white shadow-sm ring-1 ring-white/25">
+      <div className="h-1 bg-runfree-grad" />
+
+      {/* Barely-there brand wash that warms on hover. */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-runfree-pink/45 to-transparent opacity-70 transition duration-300 group-hover:opacity-100"
+      />
+
+      <div className="relative flex flex-1 flex-col p-6">
+        <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-runfree-grad text-white shadow-sm">
           {icon}
         </span>
-        <h2 className="mt-4 font-display text-lg font-bold text-white">
+        <h2 className="mt-4 font-display text-lg font-bold text-runfree-ink">
           {title}
         </h2>
-        <p className="mt-2 flex-1 text-sm leading-relaxed text-white/85">
+        <p className="mt-2 flex-1 text-sm leading-relaxed text-gray-600">
           {description}
         </p>
         <div className="mt-4">
-          <span className="inline-flex items-center gap-1 rounded-lg bg-white/90 px-3 py-1.5 text-sm font-semibold text-runfree-magentaDeep transition group-hover:bg-white">
+          <span className="inline-flex items-center gap-1 text-sm font-semibold text-runfree-magentaDeep">
             Open
             <svg
               viewBox="0 0 20 20"
