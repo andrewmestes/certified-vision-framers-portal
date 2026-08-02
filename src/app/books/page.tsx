@@ -214,8 +214,11 @@ export default function BooksPage() {
           </div>
         )}
 
-        {/* Shelf */}
-        <div className="mb-4 flex items-start justify-center gap-6 sm:gap-10">
+        {/* Shelf. Deliberately smaller than it was: at the old size the covers
+            plus a centred refresh button filled an entire laptop screen, so a
+            framer had to scroll before seeing a single chapter. It scrolls
+            sideways on phones rather than wrapping to two ragged rows. */}
+        <div className="-mx-4 mb-6 flex items-start gap-5 overflow-x-auto px-4 pb-2 [scrollbar-width:none] sm:mx-0 sm:justify-center sm:gap-8 sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden">
           {[...library.books, CALLING_BOOK].map((b) => {
             const cover = coverFor(b.name);
             const isActive = b.id === activeId;
@@ -224,13 +227,14 @@ export default function BooksPage() {
                 key={b.id}
                 onClick={() => setActiveId(b.id)}
                 aria-pressed={isActive}
-                className="group flex w-24 flex-col items-center rounded-xl outline-none ring-runfree-magenta/60 focus-visible:ring-2 focus-visible:ring-offset-2 sm:w-32"
+                title={b.name}
+                className="group flex w-16 shrink-0 flex-col items-center rounded-xl outline-none ring-runfree-magenta/60 focus-visible:ring-2 focus-visible:ring-offset-2 sm:w-24"
               >
                 <span
-                  className={`relative aspect-[2/3] w-24 overflow-hidden rounded-xl bg-white shadow-sm transition duration-300 ease-out sm:w-32 ${
+                  className={`relative aspect-[2/3] w-16 overflow-hidden rounded-lg bg-white shadow-sm transition duration-300 ease-out sm:w-24 ${
                     isActive
-                      ? "-translate-y-1 scale-105 shadow-lg"
-                      : "opacity-80 group-hover:-translate-y-1 group-hover:scale-105 group-hover:opacity-100 group-hover:shadow-lg"
+                      ? "-translate-y-1 scale-105 shadow-lg ring-2 ring-runfree-magenta/50"
+                      : "opacity-75 group-hover:-translate-y-1 group-hover:scale-105 group-hover:opacity-100 group-hover:shadow-lg"
                   }`}
                 >
                   {cover ? (
@@ -238,11 +242,11 @@ export default function BooksPage() {
                       src={cover}
                       alt={`${b.name} cover`}
                       fill
-                      sizes="(min-width: 640px) 128px, 96px"
+                      sizes="(min-width: 640px) 96px, 64px"
                       className="object-contain"
                     />
                   ) : (
-                    <span className="flex h-full w-full items-center justify-center bg-runfree-indigo p-3 text-center text-xs font-semibold text-runfree-navy">
+                    <span className="flex h-full w-full items-center justify-center bg-runfree-indigo p-2 text-center text-[10px] font-semibold text-runfree-navy">
                       {b.name}
                     </span>
                   )}
@@ -250,16 +254,6 @@ export default function BooksPage() {
               </button>
             );
           })}
-        </div>
-
-        <div className="mb-8 flex justify-center">
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 ring-1 ring-gray-200 transition hover:text-runfree-magentaDeep hover:ring-runfree-magenta/40 disabled:opacity-50"
-          >
-            {refreshing ? "Refreshing…" : "Refresh from Drive"}
-          </button>
         </div>
 
         {activeId === CALLING_ID && (
@@ -288,7 +282,7 @@ export default function BooksPage() {
 
         {active && (
           <div key={active.id} className="animate-rise space-y-8">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <h2 className="font-display text-2xl font-extrabold text-runfree-ink">
                 {active.name}
               </h2>
@@ -296,11 +290,20 @@ export default function BooksPage() {
                 href={active.amazonUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold text-runfree-magentaDeep ring-1 ring-runfree-magenta/30 transition hover:bg-runfree-pink/40"
+                className="ml-auto inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold text-runfree-magentaDeep ring-1 ring-runfree-magenta/30 transition hover:bg-runfree-pink/40"
               >
                 Buy on Amazon
                 <ExternalIcon />
               </a>
+              {/* A maintenance control, so it sits with the other row actions
+                  rather than centred on its own under the shelf. */}
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="rounded-lg px-3 py-1.5 text-sm font-medium text-gray-500 ring-1 ring-gray-200 transition hover:text-runfree-magentaDeep hover:ring-runfree-magenta/40 disabled:opacity-50"
+              >
+                {refreshing ? "Refreshing…" : "Refresh"}
+              </button>
             </div>
 
             {/* Featured: visual summary + full book */}
@@ -510,13 +513,16 @@ function VisualSummaryCard({
           {/* The summary's own first page, which says far more about what it
               is than any icon could. Falls back to the branded tile when the
               render can't be produced. */}
-          <div className="relative h-36 overflow-hidden bg-runfree-indigo">
+          {/* object-contain, not cover: these pages are landscape infographics
+              and cropping them to a strip threw away the thing that makes a
+              visual summary worth showing. */}
+          <div className="relative flex aspect-[16/10] items-center justify-center overflow-hidden bg-runfree-indigo">
             <PdfThumbnail
               fileId={file.id}
               fetchBytes={fetchBytes}
-              width={420}
+              width={520}
               sizeBytes={file.sizeBytes}
-              className="h-full w-full object-cover object-top"
+              className="h-full w-full object-contain"
               fallback={
                 <span className="relative flex h-full w-full items-center justify-center overflow-hidden bg-runfree-grad">
                   <span

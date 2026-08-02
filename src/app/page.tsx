@@ -114,26 +114,22 @@ export default function HubPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* The greeting rides in the hero rather than floating between the band
+          and the cards, where it read as an orphan and pushed the fifth card
+          below the fold on a laptop. */}
       <PortalHeader
         framer={framer}
         onSignOut={handleSignOut}
+        eyebrow={
+          framer?.name ? `Welcome back, ${framer.name.split(" ")[0]}` : undefined
+        }
         title="Certified Vision Framer Hub"
         subtitle="Helping leaders run free into what Jesus started"
         badge
       />
 
-      <main className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
-        {framer?.name && (
-          <p className="mb-10 text-center text-lg text-gray-600">
-            Welcome back,{" "}
-            <span className="font-semibold text-runfree-ink">
-              {framer.name.split(" ")[0]}
-            </span>
-            .
-          </p>
-        )}
-
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           <HubCard
             href="/resources"
             icon={<HandoutsIcon />}
