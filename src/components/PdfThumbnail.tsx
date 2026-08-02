@@ -26,6 +26,24 @@ const cacheKey = (id: string, width: number) =>
 /** In-flight renders, so two cards for the same file don't both fetch it. */
 const inFlight = new Map<string, Promise<string | null>>();
 
+/**
+ * pdf.js can sit forever without resolving or rejecting — it currently does
+ * exactly that in production, where these previews never appear while the
+ * same code renders them locally. Whatever the cause, a card that shimmers
+ * indefinitely is worse than one that shows its branded fallback, so give up
+ * after a bounded wait and let the caller draw something finished-looking.
+ */
+const RENDER_TIMEOUT_MS = 15_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error("pdf render timed out")), ms)
+    ),
+  ]);
+}
+
 async function renderFirstPage(
   fileId: string,
   fetchBytes: (id: string) => Promise<ArrayBuffer | null>,
@@ -51,7 +69,10 @@ async function renderFirstPage(
       const pdfjs = await import("pdfjs-dist");
       pdfjs.GlobalWorkerOptions.workerSrc = "/vendor/pdf.worker.min.mjs";
 
-      const pdf = await pdfjs.getDocument({ data: bytes }).promise;
+      const pdf = await withTimeout(
+        pdfjs.getDocument({ data: bytes }).promise,
+        RENDER_TIMEOUT_MS
+      );
       const page = await pdf.getPage(1);
 
       const base = page.getViewport({ scale: 1 });
