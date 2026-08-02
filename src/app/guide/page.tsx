@@ -96,6 +96,7 @@ export default function GuidePage() {
     router.replace("/auth/login");
   }
 
+  /** Raw bytes for the cover preview, through the same gated endpoint. */
   const fetchPdfBytes = useCallback(
     async (id: string): Promise<ArrayBuffer | null> => {
       const {

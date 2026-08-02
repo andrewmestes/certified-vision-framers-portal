@@ -71,6 +71,11 @@ export type DriveFile = {
   body: ReadableStream;
   mimeType: string;
   filename: string;
+  /** 206 when a byte range was served, 200 otherwise. */
+  status: number;
+  /** Present on a 206 — passed straight through to the browser. */
+  contentRange?: string;
+  contentLength?: string;
 };
 
 /**
@@ -80,20 +85,31 @@ export type DriveFile = {
  * serverless response-body limit on anything large (the certification
  * notebook alone is ~36MB). Streamed responses aren't subject to that cap.
  *
+ * A `range` is forwarded to Drive so callers can ask for part of a file.
+ * That is what makes the PDF page-one previews quick: pdf.js reads the
+ * trailer and just the objects it needs for the first page, a few hundred
+ * kilobytes, instead of pulling a whole multi-megabyte document to draw one
+ * thumbnail. Google's alt=media endpoint honours Range and replies 206.
+ *
  * Google Docs/Slides/Sheets are exported (Docs and Slides to PDF); everything
- * else is passed through untouched.
+ * else is passed through untouched. Exports can't be ranged — Drive generates
+ * them on the fly — so a range is simply ignored on that path.
  */
-export async function fetchDriveFile(fileId: string): Promise<DriveFile> {
+export async function fetchDriveFile(
+  fileId: string,
+  range?: string | null
+): Promise<DriveFile> {
   const drive = getDriveClient();
 
   const meta = await drive.files.get({
     fileId,
-    fields: "name,mimeType",
+    fields: "name,mimeType,size",
     supportsAllDrives: true,
   });
 
   const sourceMime = meta.data.mimeType || "application/octet-stream";
   const name = meta.data.name || "download";
+  const declaredSize = meta.data.size || undefined;
   const exportTarget = EXPORT_AS[sourceMime];
 
   if (exportTarget) {
@@ -106,18 +122,41 @@ export async function fetchDriveFile(fileId: string): Promise<DriveFile> {
       body: Readable.toWeb(res.data as Readable) as ReadableStream,
       mimeType: exportTarget.mime,
       filename: `${name}.${exportTarget.ext}`,
+      status: 200,
     };
   }
 
   const res = await drive.files.get(
     { fileId, alt: "media", supportsAllDrives: true },
-    { responseType: "stream" }
+    {
+      responseType: "stream",
+      headers: range ? { Range: range } : undefined,
+    }
   );
+
+  // Depending on the googleapis/gaxios version this is either a plain object
+  // or a fetch-style Headers instance. Reading it the wrong way silently
+  // yields undefined, which drops Content-Range — and without that header
+  // pdf.js abandons ranged reads and pulls the entire file anyway.
+  const raw = res.headers as unknown;
+  const readHeader = (key: string): string | undefined => {
+    if (raw && typeof (raw as Headers).get === "function") {
+      return (raw as Headers).get(key) ?? undefined;
+    }
+    const obj = raw as Record<string, string | undefined>;
+    return obj?.[key] ?? obj?.[key.toLowerCase()];
+  };
 
   return {
     body: Readable.toWeb(res.data as Readable) as ReadableStream,
     mimeType: sourceMime,
     filename: name,
+    status: res.status === 206 ? 206 : 200,
+    contentRange: readHeader("content-range"),
+    // Falls back to the size from file metadata. pdf.js only attempts ranged
+    // reads when the first response states how long the file is, and a
+    // streamed body would otherwise go out chunked with no length at all.
+    contentLength: readHeader("content-length") ?? declaredSize,
   };
 }
 

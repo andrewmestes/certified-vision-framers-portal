@@ -230,11 +230,15 @@ export default function BooksPage() {
                 title={b.name}
                 className="group flex w-16 shrink-0 flex-col items-center rounded-xl outline-none ring-runfree-magenta/60 focus-visible:ring-2 focus-visible:ring-offset-2 sm:w-24"
               >
+                {/* Square corners and no ring: these are printed books, and a
+                    rounded outline floating around a hard-cornered cover read
+                    as a mismatched frame. Selection is carried by the lift and
+                    the gradient rule beneath instead. */}
                 <span
-                  className={`relative aspect-[2/3] w-16 overflow-hidden rounded-lg bg-white shadow-sm transition duration-300 ease-out sm:w-24 ${
+                  className={`relative aspect-[2/3] w-16 shrink-0 transition duration-300 ease-out sm:w-24 ${
                     isActive
-                      ? "-translate-y-1 scale-105 shadow-lg ring-2 ring-runfree-magenta/50"
-                      : "opacity-75 group-hover:-translate-y-1 group-hover:scale-105 group-hover:opacity-100 group-hover:shadow-lg"
+                      ? "-translate-y-1 scale-105 drop-shadow-lg"
+                      : "opacity-70 group-hover:-translate-y-1 group-hover:scale-105 group-hover:opacity-100"
                   }`}
                 >
                   {cover ? (
@@ -251,6 +255,15 @@ export default function BooksPage() {
                     </span>
                   )}
                 </span>
+
+                <span
+                  aria-hidden
+                  className={`mt-2.5 h-[3px] w-full rounded-full transition-all duration-300 ${
+                    isActive
+                      ? "bg-runfree-grad opacity-100"
+                      : "bg-transparent opacity-0"
+                  }`}
+                />
               </button>
             );
           })}

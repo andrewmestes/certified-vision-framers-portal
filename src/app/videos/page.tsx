@@ -219,19 +219,26 @@ export default function VideosPage() {
             <p className="mt-2 text-sm text-gray-500">Try a different search.</p>
           </div>
         ) : (
-          <div className="space-y-12">
+          <div className="space-y-10">
             {groups.map((group) => (
               <section key={group.key}>
-                <header className="mb-5 flex items-center gap-3">
-                  {isProcessModule(group.order) && (
-                    <Image
-                      src={`/brand/modules/${group.order}.png`}
-                      alt=""
-                      width={40}
-                      height={40}
-                      className="h-9 w-9 shrink-0 object-contain"
-                    />
-                  )}
+                {/* A fixed-width icon slot keeps every group title on the same
+                    left edge, whether or not the group is one of the six
+                    numbered tools. Orientation used to sit out of line. */}
+                <header className="mb-4 flex items-center gap-3">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center">
+                    {isProcessModule(group.order) ? (
+                      <Image
+                        src={`/brand/modules/${group.order}.png`}
+                        alt=""
+                        width={40}
+                        height={40}
+                        className="h-9 w-9 object-contain"
+                      />
+                    ) : (
+                      <span className="h-6 w-1.5 rounded-full bg-runfree-grad" />
+                    )}
+                  </span>
                   <h2 className="font-display text-xl font-bold text-runfree-ink">
                     {group.label}
                   </h2>
@@ -240,7 +247,10 @@ export default function VideosPage() {
                   </span>
                 </header>
 
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {/* Four across on wide screens: at three, twenty videos ran to
+                    a four-thousand-pixel page with only three visible at a
+                    time. */}
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {group.videos.map((v, i) => (
                     <VideoCard
                       key={v.id}
@@ -358,11 +368,13 @@ function VideoCard({
 
         <span className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
 
+        {/* Lighter at rest, solid on hover: twenty opaque white discs on one
+            page competed with the thumbnails they sit on. */}
         <span className="absolute inset-0 flex items-center justify-center">
-          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white/95 shadow-lg transition duration-300 group-hover:scale-110">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/80 shadow-md backdrop-blur-sm transition duration-300 group-hover:scale-110 group-hover:bg-white group-hover:shadow-lg">
             <svg
               viewBox="0 0 24 24"
-              className="ml-1 h-6 w-6 fill-runfree-magenta"
+              className="ml-0.5 h-5 w-5 fill-runfree-magenta"
               aria-hidden="true"
             >
               <path d="M8 5v14l11-7z" />

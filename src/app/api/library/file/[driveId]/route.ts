@@ -64,10 +64,13 @@ export async function GET(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const file = await fetchDriveFile(driveId);
+    // Forward any Range so pdf.js can pull just the bytes it needs for a
+    // page-one preview instead of the whole document.
+    const range = req.headers.get("range");
+    const file = await fetchDriveFile(driveId, range);
 
     return new NextResponse(file.body, {
-      status: 200,
+      status: file.status,
       headers: {
         "Content-Type": file.mimeType,
         "Content-Disposition": `inline; filename="${file.filename.replace(
@@ -75,6 +78,9 @@ export async function GET(
           ""
         )}"`,
         "Cache-Control": "private, no-cache, must-revalidate",
+        "Accept-Ranges": "bytes",
+        ...(file.contentRange ? { "Content-Range": file.contentRange } : {}),
+        ...(file.contentLength ? { "Content-Length": file.contentLength } : {}),
       },
     });
   } catch (error) {
