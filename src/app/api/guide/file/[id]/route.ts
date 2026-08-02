@@ -10,26 +10,6 @@ import { getFacilitatorGuide, isDriveConfigured } from "@/lib/guide";
  * than trusted from the request — the same "recompute, don't trust" pattern
  * as every other gated file route.
  */
-/**
- * Cached for the same reason as the books file route: a page-one preview
- * issues several ranged reads, and re-querying Drive to re-validate the id on
- * each one cost far more than the bytes being saved.
- */
-let guideCache: {
-  at: number;
-  value: Awaited<ReturnType<typeof getFacilitatorGuide>>;
-} | null = null;
-const GUIDE_TTL_MS = 60_000;
-
-async function currentGuide() {
-  if (guideCache && Date.now() - guideCache.at < GUIDE_TTL_MS) {
-    return guideCache.value;
-  }
-  const value = await getFacilitatorGuide();
-  guideCache = { at: Date.now(), value };
-  return value;
-}
-
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -71,25 +51,19 @@ export async function GET(
       );
     }
 
-    const current = await currentGuide();
+    const current = await getFacilitatorGuide();
     if (!current || current.id !== id) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    // Forward any Range so pdf.js can pull just the bytes it needs for a
-    // page-one preview instead of the whole document.
-    const range = req.headers.get("range");
-    const file = await fetchDriveFile(id, range);
+    const file = await fetchDriveFile(id);
 
     return new NextResponse(file.body, {
-      status: file.status,
+      status: 200,
       headers: {
         "Content-Type": file.mimeType,
         "Content-Disposition": `inline; filename="${file.filename.replace(/"/g, "")}"`,
         "Cache-Control": "private, no-cache, must-revalidate",
-        "Accept-Ranges": "bytes",
-        ...(file.contentRange ? { "Content-Range": file.contentRange } : {}),
-        ...(file.contentLength ? { "Content-Length": file.contentLength } : {}),
       },
     });
   } catch (error) {
