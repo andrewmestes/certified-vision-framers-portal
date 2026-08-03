@@ -482,6 +482,10 @@ export default function FramersAdminPage() {
                 <code className="rounded bg-gray-100 px-1 py-0.5 font-mono text-[11px]">
                   GHL_API_KEY
                 </code>{" "}
+                and{" "}
+                <code className="rounded bg-gray-100 px-1 py-0.5 font-mono text-[11px]">
+                  GHL_LOCATION_ID
+                </code>{" "}
                 to have new framers tagged in the CRM automatically.
               </p>
             )}

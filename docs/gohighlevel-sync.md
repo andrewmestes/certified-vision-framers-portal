@@ -80,8 +80,15 @@ a workflow that's firing but failing is visible there.
 Implemented in `src/lib/ghl.ts` and called from the add, remove, and CSV
 import paths. Currently inert.
 
-**To turn it on:** set `GHL_API_KEY` in Vercel to a Location API key
-(GHL → Settings → Business Profile → API Key), then redeploy.
+**To turn it on**, set both of these in Vercel and redeploy:
+
+| Variable | Where it comes from |
+| --- | --- |
+| `GHL_API_KEY` | Settings → Private Integrations → create a token with the **contacts.readonly** and **contacts.write** scopes |
+| `GHL_LOCATION_ID` | Settings → Business Profile, top of General Information |
+
+Both are required. A token doesn't imply which location it means, so the
+calls fail without the ID.
 
 Once set:
 
@@ -94,13 +101,21 @@ failure never rolls it back — but the failure is surfaced to the admin rather
 than swallowed, so nobody is told a tag was applied when it wasn't. If no GHL
 contact matches the address, the admin is told that too.
 
-### A caveat worth knowing
+### Why v2
 
-`src/lib/ghl.ts` targets the **v1 REST API** (`rest.gohighlevel.com/v1`),
-which authenticates with a Location API key. GHL has been steering people to
-v2 with OAuth. v1 still works and is far simpler for a single location, but if
-GHL retires it, the client in that file is the only thing that needs
-rewriting — the call sites won't change.
+`src/lib/ghl.ts` originally targeted the v1 REST API
+(`rest.gohighlevel.com/v1`) with a Location API key. That credential no longer
+exists on current sub-accounts — the "Api Key" panel has been removed from
+Business Profile entirely — so the client was rewritten for v2
+(`services.leadconnectorhq.com`) and a Private Integration token.
+
+Three practical differences: a different host, a required `Version` header,
+and `locationId` on every call.
+
+One subtlety worth keeping: v2's contact search is fuzzy across name, email
+and phone. `searchGHLContactByEmail` confirms the returned address matches
+before handing the contact back, because a near-miss would otherwise get
+tagged as certified.
 
 ---
 
