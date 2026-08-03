@@ -171,28 +171,30 @@ export default function GuidePage() {
             <div className="p-8 text-center sm:p-10">
               {file ? (
                 <>
-                  {/* The guide's own cover page — a 168-page playbook deserves
-                      to show its face rather than sit behind a text link. */}
-                  <span className="mx-auto mb-6 block w-40 overflow-hidden rounded-lg shadow-lg ring-1 ring-black/10">
+                  {/* The guide's own title slide — a 168-page playbook deserves
+                      to show its face rather than sit behind a text link.
+                      Always the real cover, not a live PDF render: at 16.6MB
+                      the guide sits well over PdfThumbnail's 12MB cap, so the
+                      fallback is what actually renders every time. Handing it
+                      the guide's own designed cover (rather than the generic
+                      badge-on-navy placeholder) means that permanent fallback
+                      looks intentional instead of like a broken feature. */}
+                  <span className="mx-auto mb-6 block w-full max-w-sm overflow-hidden rounded-xl shadow-xl ring-1 ring-black/10 sm:max-w-md">
                     <PdfThumbnail
                       fileId={file.id}
                       fetchBytes={fetchPdfBytes}
-                      width={320}
+                      width={800}
                       sizeBytes={file.sizeBytes}
                       className="block h-auto w-full"
                       fallback={
-                        <span className="flex aspect-[8.5/11] w-full flex-col items-center justify-center gap-2 bg-runfree-navy px-3 text-center">
-                          <Image
-                            src="/brand/pivvot-badge-white.svg"
-                            alt=""
-                            width={120}
-                            height={120}
-                            className="h-14 w-auto opacity-90"
-                          />
-                          <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/70">
-                            Facilitator&rsquo;s Guide
-                          </span>
-                        </span>
+                        <Image
+                          src="/brand/dfg-cover.jpg"
+                          alt=""
+                          width={1400}
+                          height={1050}
+                          priority
+                          className="block h-auto w-full"
+                        />
                       }
                     />
                   </span>
