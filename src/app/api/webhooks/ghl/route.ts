@@ -32,6 +32,41 @@ function pick(payload: Record<string, unknown>, keys: string[]): string {
   return "";
 }
 
+/**
+ * GHL's Standard builder nests a Webhook action's Custom Data pairs under a
+ * `customData` key instead of merging them alongside the standard fields
+ * (email, contact_id, names), which arrive at the top level. Without
+ * flattening, a pair like action=remove is invisible to `pick` and every call
+ * silently falls through to the add path — reproduced directly by sending a
+ * payload shaped this way and getting "already_present" back for what should
+ * have been a removal.
+ */
+function flattenCustomData(
+  payload: Record<string, unknown>
+): Record<string, unknown> {
+  const nested = payload.customData ?? payload.custom_data;
+
+  if (Array.isArray(nested)) {
+    const flat: Record<string, unknown> = {};
+    for (const entry of nested) {
+      if (entry && typeof entry === "object") {
+        const key = (entry as { key?: unknown; name?: unknown }).key
+          ?? (entry as { key?: unknown; name?: unknown }).name;
+        if (typeof key === "string") {
+          flat[key] = (entry as { value?: unknown }).value;
+        }
+      }
+    }
+    return { ...payload, ...flat };
+  }
+
+  if (nested && typeof nested === "object") {
+    return { ...payload, ...(nested as Record<string, unknown>) };
+  }
+
+  return payload;
+}
+
 export async function POST(req: NextRequest) {
   const secret = process.env.GHL_WEBHOOK_SECRET;
 
@@ -55,6 +90,8 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
+
+  payload = flattenCustomData(payload);
 
   const email = pick(payload, ["email", "Email", "contact_email"]).toLowerCase();
 
