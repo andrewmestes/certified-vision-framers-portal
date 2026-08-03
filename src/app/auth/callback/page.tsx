@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 /**
- * Landing spot after Google sign-in. The Supabase client picks the session up
- * out of the URL on its own; this just waits for it and moves people along.
+ * Landing spot after Google sign-in and after an invite link. The Supabase
+ * client picks the session up out of the URL on its own; this waits for it and
+ * moves people along.
  */
 export default function AuthCallbackPage() {
   const [failed, setFailed] = useState(false);
@@ -14,6 +15,18 @@ export default function AuthCallbackPage() {
 
   useEffect(() => {
     let cancelled = false;
+
+    /**
+     * An invited framer has a session but no password — the invite link is the
+     * only thing that ever let them in. Dropping them straight on the hub left
+     * them one sign-out away from being locked out for good, since self-signup
+     * is disabled and they'd have nothing to sign in with. Send them to set a
+     * password first, which is also what the invite email promises.
+     */
+    if (window.location.hash.includes("type=invite")) {
+      window.location.replace(`/auth/reset-password${window.location.hash}`);
+      return;
+    }
 
     async function settle() {
       for (let attempt = 0; attempt < 20; attempt++) {

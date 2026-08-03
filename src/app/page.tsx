@@ -38,7 +38,7 @@ export default function HubPage() {
      * not depend on it.
      */
     const hash = window.location.hash;
-    if (hash.includes("type=recovery")) {
+    if (hash.includes("type=recovery") || hash.includes("type=invite")) {
       window.location.replace(`/auth/reset-password${hash}`);
       return;
     }

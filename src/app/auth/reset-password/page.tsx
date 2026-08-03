@@ -16,10 +16,20 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState<"checking" | "ok" | "invalid">("checking");
+  /**
+   * The same screen serves two arrivals: someone resetting a forgotten
+   * password, and an invited framer setting one for the first time. Only the
+   * wording differs, but telling a brand-new user their "reset link expired"
+   * would be baffling — they never had a password to reset.
+   */
+  const [isInvite, setIsInvite] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    // Supabase puts a recovery session in the URL and the client picks it up.
+    // Read before the client consumes and clears the hash.
+    if (window.location.hash.includes("type=invite")) setIsInvite(true);
+
+    // Supabase puts the session in the URL and the client picks it up.
     // Give it a moment, then confirm we actually have one.
     const timer = setTimeout(async () => {
       const {
@@ -59,8 +69,12 @@ export default function ResetPasswordPage() {
 
   return (
     <AuthShell
-      title="Choose a new password"
-      subtitle="Then you'll be signed straight in"
+      title={isInvite ? "Set your password" : "Choose a new password"}
+      subtitle={
+        isInvite
+          ? "Last step — then you're into the portal"
+          : "Then you'll be signed straight in"
+      }
       footer={
         <p>
           <a
@@ -78,16 +92,38 @@ export default function ResetPasswordPage() {
 
       {ready === "invalid" && (
         <div className="space-y-4">
-          <FormError message="This reset link is invalid or has expired." />
+          <FormError
+            message={
+              isInvite
+                ? "This invitation link is no longer valid."
+                : "This reset link is invalid or has expired."
+            }
+          />
           <p className="text-sm leading-relaxed text-gray-600">
-            Reset links are single-use and expire after an hour.{" "}
-            <a
-              href="/auth/forgot-password"
-              className="font-medium text-runfree-magentaDeep hover:underline"
-            >
-              Request a new one
-            </a>
-            .
+            {isInvite ? (
+              <>
+                Invitation links are single-use and expire. Ask whoever added
+                you to send a new one, or{" "}
+                <a
+                  href="/auth/forgot-password"
+                  className="font-medium text-runfree-magentaDeep hover:underline"
+                >
+                  set a password directly
+                </a>{" "}
+                using the same email address.
+              </>
+            ) : (
+              <>
+                Reset links are single-use and expire after an hour.{" "}
+                <a
+                  href="/auth/forgot-password"
+                  className="font-medium text-runfree-magentaDeep hover:underline"
+                >
+                  Request a new one
+                </a>
+                .
+              </>
+            )}
           </p>
         </div>
       )}
@@ -97,7 +133,9 @@ export default function ResetPasswordPage() {
           <FormError message={error} />
           <Field
             id="password"
-            label="New password (min 8 characters)"
+            label={
+              isInvite ? "Password (min 8 characters)" : "New password (min 8 characters)"
+            }
             type="password"
             value={password}
             onChange={setPassword}
@@ -105,7 +143,7 @@ export default function ResetPasswordPage() {
           />
           <Field
             id="confirm"
-            label="Confirm new password"
+            label={isInvite ? "Confirm password" : "Confirm new password"}
             type="password"
             value={confirm}
             onChange={setConfirm}
@@ -113,8 +151,8 @@ export default function ResetPasswordPage() {
           />
           <SubmitButton
             loading={loading}
-            idleLabel="Update password"
-            busyLabel="Updating…"
+            idleLabel={isInvite ? "Set password and continue" : "Update password"}
+            busyLabel={isInvite ? "Setting up…" : "Updating…"}
           />
         </form>
       )}
