@@ -27,6 +27,39 @@ const OEMBED = "https://www.loom.com/v1/oembed";
 /** Long enough that a page load is free, short enough to pick up re-records. */
 const TTL_MS = 6 * 60 * 60 * 1000;
 
+/**
+ * Hand-picked stills for recordings where Loom's own thumbnail can't be
+ * trusted — either a black pre-roll frame (camera not rolling yet when the
+ * recording started) or a still that belongs to a different session
+ * entirely (the cross-session mismatch this file already guards against).
+ * Neither is something oEmbed can fix; there's no frame to ask it for.
+ *
+ * Each file is a real frame pulled from that recording — seeked forward past
+ * the black or wrong-content opening — not stock art, so it stays honest
+ * about what the video actually shows.
+ *
+ * Re-recording the affected video obsoletes its entry here; nothing else
+ * needs to change; the branded fallback below just won't be needed for that
+ * id anymore. Safe to leave a stale entry in the meantime — a keyed id only
+ * ever matches its own recording.
+ */
+const MANUAL_STILLS: Record<string, string> = {
+  // Satan's Loophole Reinforcement Training — black pre-roll.
+  "774ff6bdc7d14734bbabf0041bef5b37": "/brand/videos/774ff6bdc7d14734bbabf0041bef5b37.jpg",
+  // Future Church "Ted Talk" — black pre-roll.
+  "f056b015647b47a1b6d7fc1c4a60b670": "/brand/videos/f056b015647b47a1b6d7fc1c4a60b670.jpg",
+  // Why I Wrote the Book — black pre-roll.
+  "9e062843240e4aeb92da30e6477a9ad8": "/brand/videos/9e062843240e4aeb92da30e6477a9ad8.jpg",
+  // Leading Church Testimony — Long Hollow — black pre-roll.
+  "e6b4e80dfd6a4efdbb0c04436be819e0": "/brand/videos/e6b4e80dfd6a4efdbb0c04436be819e0.jpg",
+  // Funnel Fusion Overview Teaching — oEmbed returns a different session's still.
+  "b42d9b019edd4306897f5ee8fe060615": "/brand/videos/b42d9b019edd4306897f5ee8fe060615.jpg",
+  // Crowd Cloud Overview Teaching — oEmbed returns a different session's still.
+  "87e14978ff174c9baaedb5aebfd2dcd8": "/brand/videos/87e14978ff174c9baaedb5aebfd2dcd8.jpg",
+  // 7 Laws Overview Teaching — oEmbed returns a different session's still.
+  "937fe2b1ae6d4993bd6a73345e108f91": "/brand/videos/937fe2b1ae6d4993bd6a73345e108f91.jpg",
+};
+
 type Entry = { at: number; url: string | null };
 
 const cache = new Map<string, Entry>();
@@ -70,6 +103,8 @@ async function preferStill(gifUrl: string): Promise<string> {
 }
 
 async function resolveOne(loomId: string): Promise<string | null> {
+  if (MANUAL_STILLS[loomId]) return MANUAL_STILLS[loomId];
+
   const hit = cache.get(loomId);
   if (hit && Date.now() - hit.at < TTL_MS) return hit.url;
 
