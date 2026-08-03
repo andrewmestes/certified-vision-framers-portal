@@ -46,6 +46,23 @@ action = remove
 That is the only thing distinguishing a revoke from a grant — without it the
 webhook treats the call as an add.
 
+### Invitations
+
+A grant also emails the invitation, so a newly tagged contact hears that they
+have access instead of sitting on the list unaware.
+
+Only a genuine add sends one. Re-running a workflow across contacts who are
+already listed is routine in GHL, and each replay would otherwise email
+someone who has been in the portal for months.
+
+To suppress it entirely — worth doing on a one-off workflow that retags an
+existing cohort, where a few hundred invitations would hit the mail rate limit
+and mostly never arrive — add a second Custom Data pair:
+
+```
+invite = false
+```
+
 ### Checking it
 
 `GET /api/webhooks/ghl` returns `{"status":"ok","configured":true}` in a
