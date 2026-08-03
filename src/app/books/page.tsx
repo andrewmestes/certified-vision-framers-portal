@@ -58,18 +58,21 @@ function coverFor(name: string): string | null {
   return COVERS[name.toLowerCase().trim()] || null;
 }
 
-// Not part of the live-mirrored shelf — this isn't a retail book at all
-// (there's no Amazon listing), it's RunFree's own 8-week "Calling for the
-// Best of Us" group curriculum, powered by Younique. Still sits on the
+// Not part of the live-mirrored shelf — there's no Google Drive folder of
+// chapters/resources for this one, just the book itself. Still sits on the
 // shelf alongside the other four so it isn't a second-class citizen at the
-// bottom of the page.
+// bottom of the page. Published by Will Mancini in May 2025, powered by the
+// Younique framework — direct product link rather than a search URL since a
+// confirmed one exists (amazonSearchUrl in lib/books.ts is for the mirrored
+// books, which don't have one on hand).
 const CALLING_ID = "calling";
 const CALLING_BOOK = {
   id: CALLING_ID,
   name: "Calling",
   title: "Calling for the Best of Us",
   description:
-    "RunFree's 8-week Calling Group curriculum, powered by Younique — where Younique names an individual's unique design, this is the group experience that helps a team actually activate it. Not a book on Amazon; it's a facilitated program run through RunFree.",
+    "An 8-week deployment system for activating the God-given design of every believer in your church, built on the Younique framework — from Will Mancini.",
+  amazonUrl: "https://www.amazon.com/dp/B0F7Y76Y31",
 };
 
 function prettySize(bytes: number | null) {
@@ -276,12 +279,12 @@ export default function BooksPage() {
               <Image
                 src="/brand/books/calling.png"
                 alt=""
-                width={90}
-                height={79}
-                className="mb-2 h-16 w-auto"
+                width={480}
+                height={720}
+                className="mb-2 h-24 w-auto rounded shadow-sm"
               />
               <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-runfree-magentaDeep">
-                Also from RunFree
+                Also by Will Mancini
               </p>
               <h2 className="font-display text-2xl font-bold text-runfree-ink">
                 {CALLING_BOOK.title}
@@ -289,6 +292,15 @@ export default function BooksPage() {
               <p className="mx-auto mt-1 max-w-xl text-sm leading-relaxed text-gray-600">
                 {CALLING_BOOK.description}
               </p>
+              <a
+                href={CALLING_BOOK.amazonUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold text-runfree-magentaDeep ring-1 ring-runfree-magenta/30 transition hover:bg-runfree-pink/40"
+              >
+                Buy on Amazon
+                <ExternalIcon />
+              </a>
             </div>
           </div>
         )}
