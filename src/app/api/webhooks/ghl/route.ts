@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { inviteFramer, type InviteOutcome } from "@/lib/invite";
 
 /**
  * POST /api/webhooks/ghl
@@ -13,6 +14,13 @@ import { supabaseAdmin } from "@/lib/supabase";
  *
  * Add a Custom Data pair of action=remove on a "tag removed" workflow to
  * revoke access; anything else is treated as an add.
+ *
+ * An add also sends the invitation, matching what adding someone by hand does
+ * — being tagged certified but never hearing about it is the whole problem
+ * this is meant to solve. A Custom Data pair of invite=false suppresses it,
+ * which is what a bulk retag of an existing cohort wants: those people are
+ * already in, and a few hundred invitations would hit the mail rate limit and
+ * mostly never arrive.
  */
 
 /** GHL's field naming varies by trigger, so accept the common shapes. */
@@ -108,15 +116,34 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    /**
+     * Only invite on a genuine add. Re-running a workflow over people who are
+     * already on the list is routine in GHL, and each replay would otherwise
+     * be another email to someone who has been in the portal for months.
+     */
+    let invited: InviteOutcome = "skipped";
+    let inviteError: string | null = null;
+
+    if (!existing && pick(payload, ["invite"]).toLowerCase() !== "false") {
+      const result = await inviteFramer(email, req.nextUrl.origin);
+      invited = result.outcome;
+      inviteError = result.error;
+    }
+
     await supabaseAdmin.from("ghl_sync_log").insert({
       ghl_contact_id: contactId || email,
-      status: "success",
+      status: invited === "failed" ? "failed" : "success",
+      error_message: inviteError,
     });
 
+    // Still a 200 when the invite fails — access was granted, and a non-2xx
+    // would make GHL retry the whole thing and duplicate the work.
     return NextResponse.json({
       ok: true,
       action: existing ? "already_present" : "added",
       email,
+      invited,
+      inviteError,
     });
   } catch (error) {
     const message =

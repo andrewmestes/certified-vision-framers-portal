@@ -6,6 +6,7 @@ import {
   untagContactAsCertifiedFramer,
   type GhlTagResult,
 } from "@/lib/ghl";
+import { inviteFramer, type InviteOutcome } from "@/lib/invite";
 
 /** Turn a GHL result into something an admin can act on, or null if silent. */
 function ghlNotice(result: GhlTagResult, email: string): string | null {
@@ -210,43 +211,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  /**
-   * Invite straight away unless told not to.
-   *
-   * Someone who already has a login is skipped rather than invited — Supabase
-   * rejects inviting an existing user, and there'd be nothing to invite them
-   * to: they can already sign in, and re-adding a previously removed framer is
-   * exactly this case.
-   */
-  let invited: "sent" | "already_has_login" | "skipped" | "failed" = "skipped";
+  // Invite straight away unless told not to. Access is already granted at
+  // this point, so a mail failure is reported rather than treated as a failed
+  // add — the admin needs to know to retry the invitation, not the add.
+  let invited: InviteOutcome = "skipped";
   let inviteError: string | null = null;
 
   if (shouldInvite) {
-    const { data: userList } = await supabaseAdmin.auth.admin.listUsers({
-      page: 1,
-      perPage: 1000,
-    });
-    const hasLogin = (userList?.users || []).some(
-      (u) => u.email?.toLowerCase() === cleanEmail
-    );
-
-    if (hasLogin) {
-      invited = "already_has_login";
-    } else {
-      const { error: inviteErr } =
-        await supabaseAdmin.auth.admin.inviteUserByEmail(cleanEmail, {
-          redirectTo: `${req.nextUrl.origin}/auth/callback`,
-        });
-
-      if (inviteErr) {
-        // Access is already granted; a mail failure shouldn't read as a
-        // failed add, but the admin does need to know to retry the invite.
-        invited = "failed";
-        inviteError = inviteErr.message;
-      } else {
-        invited = "sent";
-      }
-    }
+    const result = await inviteFramer(cleanEmail, req.nextUrl.origin);
+    invited = result.outcome;
+    inviteError = result.error;
   }
 
   // Portal access is already granted at this point. GHL tagging is a
