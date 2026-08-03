@@ -83,6 +83,7 @@ export default function FramersAdminPage() {
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [sendingId, setSendingId] = useState<string | null>(null);
 
+  const [inviteOnAdd, setInviteOnAdd] = useState(true);
   const [importOpen, setImportOpen] = useState(false);
   const [csvText, setCsvText] = useState("");
   const [importing, setImporting] = useState(false);
@@ -162,7 +163,11 @@ export default function FramersAdminPage() {
     try {
       const res = await authedFetch("/api/admin/framers", {
         method: "POST",
-        body: JSON.stringify({ email: newEmail, name: newName }),
+        body: JSON.stringify({
+          email: newEmail,
+          name: newName,
+          invite: inviteOnAdd,
+        }),
       });
       const body = await res.json();
 
@@ -172,10 +177,14 @@ export default function FramersAdminPage() {
       }
 
       const email = newEmail.trim().toLowerCase();
+      const tagged = body.ghl === "tagged" ? " and tagged in GoHighLevel" : "";
+
       flash(
-        body.ghl === "tagged"
-          ? `${email} can now create an account, and was tagged in GoHighLevel.`
-          : `${email} can now create an account.`
+        body.invited === "sent"
+          ? `${email} was added${tagged} — invitation sent.`
+          : body.invited === "already_has_login"
+            ? `${email} was added${tagged}. They already have a login, so no invitation was needed.`
+            : `${email} was added${tagged}. Use Invite when you're ready to email them.`
       );
       if (body.warning) setWarning(body.warning);
       setNewEmail("");
@@ -415,8 +424,8 @@ export default function FramersAdminPage() {
               Add a Certified Vision Framer
             </h2>
             <p className="mt-1 text-sm text-gray-600">
-              They&rsquo;ll create their own account with this email — you
-              don&rsquo;t set a password for them.
+              They&rsquo;ll get an email invitation and set their own password —
+              you don&rsquo;t set one for them.
               {ghlConfigured
                 ? " They'll also be tagged in GoHighLevel as a Certified Vision Framer."
                 : ""}
@@ -443,9 +452,29 @@ export default function FramersAdminPage() {
                 disabled={adding}
                 className="rounded-lg bg-runfree-grad px-6 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
               >
-                {adding ? "Adding…" : "Add"}
+                {adding
+                  ? inviteOnAdd
+                    ? "Adding & inviting…"
+                    : "Adding…"
+                  : inviteOnAdd
+                    ? "Add & invite"
+                    : "Add"}
               </button>
             </div>
+
+            {/* Opt-out rather than opt-in: adding someone nearly always means
+                letting them in, and a separate Invite click was easy to
+                forget. Unticking is for the case where certification isn't
+                finished yet and access should wait. */}
+            <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-gray-600">
+              <input
+                type="checkbox"
+                checked={inviteOnAdd}
+                onChange={(e) => setInviteOnAdd(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-runfree-magenta focus:ring-runfree-magenta/40"
+              />
+              Email them an invitation now
+            </label>
 
             {!ghlConfigured && (
               <p className="mt-3 text-xs text-gray-500">
@@ -481,9 +510,10 @@ export default function FramersAdminPage() {
                   Paste rows or choose a .csv file. A header row is optional —
                   columns named <em>name</em> and <em>email</em> are detected,
                   and otherwise whichever cell looks like an address is used.
-                  This adds people to the list only; it doesn&rsquo;t create
-                  logins or send anything, so nobody is emailed until you
-                  invite them.
+                  Unlike adding one person, importing doesn&rsquo;t email
+                  anyone — a cohort of forty invitations at once would hit your
+                  mail provider&rsquo;s rate limit and most would silently never
+                  arrive. Import the list, then invite from the table below.
                 </p>
 
                 <div className="flex flex-wrap items-center gap-3">

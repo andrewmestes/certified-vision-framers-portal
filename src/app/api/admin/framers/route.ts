@@ -168,12 +168,15 @@ export async function POST(req: NextRequest) {
   const caller = await requireAdmin(req);
   if (!caller) return denied();
 
-  const { email, name } = await req.json();
+  const { email, name, invite } = await req.json();
 
   const cleanEmail = String(email || "")
     .trim()
     .toLowerCase();
   const cleanName = String(name || "").trim();
+  // Adding someone is almost always meant to let them in, so inviting is the
+  // default and opting out is the deliberate act — not the other way round.
+  const shouldInvite = invite !== false;
 
   if (!cleanEmail || !cleanEmail.includes("@")) {
     return NextResponse.json(
@@ -207,12 +210,60 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  /**
+   * Invite straight away unless told not to.
+   *
+   * Someone who already has a login is skipped rather than invited — Supabase
+   * rejects inviting an existing user, and there'd be nothing to invite them
+   * to: they can already sign in, and re-adding a previously removed framer is
+   * exactly this case.
+   */
+  let invited: "sent" | "already_has_login" | "skipped" | "failed" = "skipped";
+  let inviteError: string | null = null;
+
+  if (shouldInvite) {
+    const { data: userList } = await supabaseAdmin.auth.admin.listUsers({
+      page: 1,
+      perPage: 1000,
+    });
+    const hasLogin = (userList?.users || []).some(
+      (u) => u.email?.toLowerCase() === cleanEmail
+    );
+
+    if (hasLogin) {
+      invited = "already_has_login";
+    } else {
+      const { error: inviteErr } =
+        await supabaseAdmin.auth.admin.inviteUserByEmail(cleanEmail, {
+          redirectTo: `${req.nextUrl.origin}/auth/callback`,
+        });
+
+      if (inviteErr) {
+        // Access is already granted; a mail failure shouldn't read as a
+        // failed add, but the admin does need to know to retry the invite.
+        invited = "failed";
+        inviteError = inviteErr.message;
+      } else {
+        invited = "sent";
+      }
+    }
+  }
+
   // Portal access is already granted at this point. GHL tagging is a
   // best-effort follow-on: a CRM outage must not undo or block access.
   const ghl = await tagContactAsCertifiedFramer(cleanEmail);
 
   return NextResponse.json(
-    { ok: true, ghl: ghl.status, warning: ghlNotice(ghl, cleanEmail) },
+    {
+      ok: true,
+      invited,
+      inviteError,
+      ghl: ghl.status,
+      warning:
+        invited === "failed"
+          ? `${cleanEmail} was added, but the invitation email failed: ${inviteError}. Use the Invite button to try again.`
+          : ghlNotice(ghl, cleanEmail),
+    },
     { status: 201 }
   );
 }
