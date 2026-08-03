@@ -1,155 +1,73 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { signupWithEmail, signInWithGoogle } from "@/lib/auth";
-import AuthShell, {
-  Field,
-  FormError,
-  FormNotice,
-  GoogleButton,
-  OrDivider,
-  SubmitButton,
-} from "@/components/AuthShell";
+import AuthShell from "@/components/AuthShell";
 
-export default function SignupPage() {
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
-  const [checkInbox, setCheckInbox] = useState(false);
-  const router = useRouter();
-
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
-
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const result = await signupWithEmail(email, password, name);
-
-      // With email confirmation on, there's no session yet — they have to
-      // click the link first. Without it, we can go straight in.
-      if (result?.session) {
-        router.push("/");
-      } else {
-        setCheckInbox(true);
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Signup failed";
-      setError(
-        /already registered|already exists/i.test(msg)
-          ? "There's already an account for that email. Try signing in instead."
-          : msg
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGoogle = async () => {
-    setError("");
-    setGoogleLoading(true);
-    try {
-      await signInWithGoogle();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Google sign-in failed");
-      setGoogleLoading(false);
-    }
-  };
-
+/**
+ * Self-signup is deliberately not offered.
+ *
+ * Access follows certification: an admin adds the person to the Certified
+ * Vision Framers list and invites them. An open signup form only produced
+ * people stuck on an "access pending" screen with no idea why, so the form
+ * is gone.
+ *
+ * The route is kept rather than deleted because the old link has been sent
+ * out and may be bookmarked — a page explaining how access actually works is
+ * more use than a 404. The real enforcement is the "Allow new users to sign
+ * up" setting in Supabase; this page is the signpost, not the lock.
+ */
+export default function SignupClosedPage() {
   return (
     <AuthShell
-      title="Create your account"
-      subtitle="Use the email your certification was issued to"
+      title="Access is by invitation"
+      subtitle="For RunFree Certified Vision Framers"
       footer={
         <p>
-          Already have an account?{" "}
           <a
             href="/auth/login"
             className="font-medium text-runfree-magentaDeep hover:underline"
           >
-            Sign in
+            Back to sign in
           </a>
         </p>
       }
     >
-      {checkInbox ? (
-        <div className="space-y-4">
-          <FormNotice
-            message={`Almost there — we sent a confirmation link to ${email}.`}
-          />
-          <p className="text-sm leading-relaxed text-gray-600">
-            Click the link in that email to finish setting up your account, then
-            sign in. If it doesn&rsquo;t arrive within a few minutes, check your
-            spam folder.
-          </p>
+      <div className="space-y-4">
+        <p className="text-sm leading-relaxed text-gray-600">
+          This portal is for leaders who have completed Pivvot Vision Framing
+          certification. Accounts aren&rsquo;t created here — RunFree adds you
+          once your certification is complete, and you&rsquo;ll get an email
+          invitation to set your password.
+        </p>
+
+        <p className="text-sm leading-relaxed text-gray-600">
+          Already been invited? Use the link in that email, or{" "}
+          <a
+            href="/auth/login"
+            className="font-medium text-runfree-magentaDeep hover:underline"
+          >
+            sign in
+          </a>
+          . If you had an account and can&rsquo;t get in,{" "}
+          <a
+            href="/auth/forgot-password"
+            className="font-medium text-runfree-magentaDeep hover:underline"
+          >
+            reset your password
+          </a>
+          .
+        </p>
+
+        <div className="rounded-lg bg-runfree-indigo/60 px-4 py-3 text-sm leading-relaxed text-runfree-navy">
+          Think you should have access?{" "}
+          <a
+            href="mailto:andrew@runfree.co?subject=Vision%20Framers%20Portal%20access"
+            className="font-semibold underline"
+          >
+            Email us
+          </a>{" "}
+          and we&rsquo;ll get you set up.
         </div>
-      ) : (
-        <>
-      <GoogleButton
-        onClick={handleGoogle}
-        disabled={googleLoading}
-        label={googleLoading ? "Redirecting…" : "Continue with Google"}
-      />
-
-      <OrDivider />
-
-      <form onSubmit={handleSignup} className="space-y-5">
-        <FormError message={error} />
-        <Field
-          id="name"
-          label="Full name"
-          value={name}
-          onChange={setName}
-          autoComplete="name"
-        />
-        <Field
-          id="email"
-          label="Email"
-          type="email"
-          value={email}
-          onChange={setEmail}
-          autoComplete="email"
-        />
-        <Field
-          id="password"
-          label="Password (min 8 characters)"
-          type="password"
-          value={password}
-          onChange={setPassword}
-          autoComplete="new-password"
-        />
-        <Field
-          id="confirm-password"
-          label="Confirm password"
-          type="password"
-          value={confirmPassword}
-          onChange={setConfirmPassword}
-          autoComplete="new-password"
-        />
-        <SubmitButton
-          loading={loading}
-          idleLabel="Create Account"
-          busyLabel="Creating account…"
-        />
-      </form>
-        </>
-      )}
+      </div>
     </AuthShell>
   );
 }

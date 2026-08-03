@@ -40,26 +40,14 @@ export async function loginWithEmail(email: string, password: string) {
   return data;
 }
 
-export async function signupWithEmail(
-  email: string,
-  password: string,
-  name: string
-) {
-  // Create auth account
-  const { data: authData, error: authError } =
-    await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          name,
-        },
-      },
-    });
-
-  if (authError) throw authError;
-  return authData;
-}
+/**
+ * Removed on purpose — this portal has no self-signup.
+ *
+ * Access follows certification: an admin adds the person to the allowlist and
+ * invites them, which is what creates their login. Keeping a signUp() helper
+ * around invited a future caller to reintroduce a path that the product
+ * doesn't want, so it's gone rather than merely unused.
+ */
 
 export async function logout() {
   const { error } = await supabase.auth.signOut();

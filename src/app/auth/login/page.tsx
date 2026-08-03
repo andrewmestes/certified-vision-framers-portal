@@ -58,13 +58,14 @@ export default function LoginPage() {
       title="Vision Framers Portal"
       subtitle="For RunFree Certified Vision Framers"
       footer={
-        <p>
-          New to the portal?{" "}
+        <p className="leading-relaxed">
+          Access is granted by RunFree once your certification is complete.
+          Need an invitation?{" "}
           <a
-            href="/auth/signup"
+            href="mailto:andrew@runfree.co?subject=Vision%20Framers%20Portal%20access"
             className="font-medium text-runfree-magentaDeep hover:underline"
           >
-            Create an account
+            Get in touch
           </a>
         </p>
       }
