@@ -388,7 +388,7 @@ export default function BooksPage() {
                         <span className="min-w-0 flex-1 truncate text-[15px] font-medium text-runfree-ink">
                           {f.label}
                         </span>
-                        <span className="hidden shrink-0 text-xs text-gray-400 sm:inline">
+                        <span className="hidden shrink-0 text-xs text-gray-500 sm:inline">
                           {prettySize(f.sizeBytes)}
                         </span>
                         <span className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold text-runfree-magentaDeep opacity-0 ring-1 ring-runfree-magenta/30 transition group-hover:opacity-100">
@@ -419,7 +419,7 @@ export default function BooksPage() {
                         <span className="min-w-0 flex-1 truncate text-[15px] font-medium text-runfree-ink">
                           {f.title}
                         </span>
-                        <span className="hidden shrink-0 text-xs text-gray-400 sm:inline">
+                        <span className="hidden shrink-0 text-xs text-gray-500 sm:inline">
                           {prettySize(f.sizeBytes)}
                         </span>
                         <span className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold text-runfree-magentaDeep opacity-0 ring-1 ring-runfree-magenta/30 transition group-hover:opacity-100">
@@ -455,7 +455,7 @@ export default function BooksPage() {
                     <span className="min-w-0 flex-1 truncate text-[15px] font-medium text-runfree-ink">
                       {f.title}
                     </span>
-                    <span className="hidden shrink-0 text-xs text-gray-400 sm:inline">
+                    <span className="hidden shrink-0 text-xs text-gray-500 sm:inline">
                       {prettySize(f.sizeBytes)}
                     </span>
                     <span className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold text-runfree-magentaDeep opacity-0 ring-1 ring-runfree-magenta/30 transition group-hover:opacity-100">
@@ -507,7 +507,7 @@ function FeaturedCard({
             </h3>
             <button
               onClick={() => onOpen(file)}
-              className="mt-4 rounded-lg bg-runfree-grad px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+              className="mt-4 rounded-lg bg-runfree-grad-deep px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90"
             >
               Open
             </button>
@@ -570,7 +570,7 @@ function VisualSummaryCard({
             <span className="mt-1 block font-display text-base font-bold leading-snug text-runfree-ink">
               {file.title}
             </span>
-            <span className="mt-3 inline-block rounded-lg bg-runfree-grad px-4 py-1.5 text-sm font-semibold text-white transition group-hover:opacity-90">
+            <span className="mt-3 inline-block rounded-lg bg-runfree-grad-deep px-4 py-1.5 text-sm font-semibold text-white transition group-hover:opacity-90">
               Open
             </span>
           </span>

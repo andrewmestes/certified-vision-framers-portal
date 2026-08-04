@@ -51,7 +51,7 @@ export default function PortalFooter() {
           </div>
         </div>
 
-        <p className="mt-8 border-t border-gray-100 pt-6 text-xs text-gray-400">
+        <p className="mt-8 border-t border-gray-100 pt-6 text-xs text-gray-500">
           Questions about permitted use? Contact{" "}
           <a
             href="mailto:andrew@runfree.co"

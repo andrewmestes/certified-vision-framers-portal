@@ -114,7 +114,7 @@ export default function HubPage() {
             </p>
             <button
               onClick={handleSignOut}
-              className="mt-6 w-full rounded-lg bg-runfree-grad px-4 py-2.5 font-medium text-white transition hover:opacity-90"
+              className="mt-6 w-full rounded-lg bg-runfree-grad-deep px-4 py-2.5 font-medium text-white transition hover:opacity-90"
             >
               Sign out
             </button>
@@ -204,7 +204,7 @@ function HubCard({
           <h2 className="mt-4 font-display text-lg font-bold text-gray-500">
             {title}
           </h2>
-          <p className="mt-2 flex-1 text-sm leading-relaxed text-gray-400">
+          <p className="mt-2 flex-1 text-sm leading-relaxed text-gray-500">
             {description}
           </p>
           <div className="mt-4">

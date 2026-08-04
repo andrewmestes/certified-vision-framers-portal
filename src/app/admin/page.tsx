@@ -136,7 +136,7 @@ export default function AdminDashboard() {
             </p>
             <a
               href="/admin/framers"
-              className="mt-6 inline-block rounded-lg bg-runfree-grad px-6 py-2.5 font-semibold text-white transition hover:opacity-90"
+              className="mt-6 inline-block rounded-lg bg-runfree-grad-deep px-6 py-2.5 font-semibold text-white transition hover:opacity-90"
             >
               Manage Framers
             </a>
@@ -156,7 +156,7 @@ export default function AdminDashboard() {
             </p>
             <a
               href="/admin/videos"
-              className="mt-6 inline-block rounded-lg bg-runfree-grad px-6 py-2.5 font-semibold text-white transition hover:opacity-90"
+              className="mt-6 inline-block rounded-lg bg-runfree-grad-deep px-6 py-2.5 font-semibold text-white transition hover:opacity-90"
             >
               Manage Videos
             </a>

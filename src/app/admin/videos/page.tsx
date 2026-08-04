@@ -198,7 +198,7 @@ export default function AdminVideosPage() {
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://www.loom.com/share/…"
                 required
-                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 outline-none transition placeholder:text-gray-400 focus:border-runfree-magenta focus:ring-2 focus:ring-runfree-magenta/25"
+                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 outline-none transition placeholder:text-gray-500 focus:border-runfree-magenta focus:ring-2 focus:ring-runfree-magenta/25"
               />
               {url && (
                 <p
@@ -218,7 +218,7 @@ export default function AdminVideosPage() {
                 htmlFor="description"
                 className="mb-1.5 block text-sm font-medium text-runfree-ink"
               >
-                Description <span className="text-gray-400">(optional)</span>
+                Description <span className="text-gray-500">(optional)</span>
               </label>
               <textarea
                 id="description"
@@ -234,7 +234,7 @@ export default function AdminVideosPage() {
                 htmlFor="module"
                 className="mb-1.5 block text-sm font-medium text-runfree-ink"
               >
-                Group under <span className="text-gray-400">(optional)</span>
+                Group under <span className="text-gray-500">(optional)</span>
               </label>
               <input
                 id="module"
@@ -242,7 +242,7 @@ export default function AdminVideosPage() {
                 value={module}
                 onChange={(e) => setModule(e.target.value)}
                 placeholder="Leave blank for General"
-                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 outline-none transition placeholder:text-gray-400 focus:border-runfree-magenta focus:ring-2 focus:ring-runfree-magenta/25"
+                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 outline-none transition placeholder:text-gray-500 focus:border-runfree-magenta focus:ring-2 focus:ring-runfree-magenta/25"
               />
               <datalist id="module-options">
                 {modules.map((m) => (
@@ -257,7 +257,7 @@ export default function AdminVideosPage() {
             <button
               type="submit"
               disabled={saving}
-              className="rounded-lg bg-runfree-grad px-6 py-2.5 font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+              className="rounded-lg bg-runfree-grad-deep px-6 py-2.5 font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
             >
               {saving ? "Adding…" : "Add Video"}
             </button>

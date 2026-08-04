@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 
 export type PreviewFile = {
   id: string;
@@ -29,6 +30,7 @@ export default function FilePreview({
 }) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let url: string | null = null;
@@ -53,15 +55,7 @@ export default function FilePreview({
     };
   }, [file.id, fetchUrl]);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
-    };
-  }, [onClose]);
+  useFocusTrap(dialogRef, onClose);
 
   return (
     <div
@@ -69,14 +63,22 @@ export default function FilePreview({
       onClick={onClose}
     >
       <div
-        className="flex h-full w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="preview-title"
+        tabIndex={-1}
+        className="flex h-full w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="h-1.5 shrink-0 bg-runfree-grad" />
 
         <header className="flex shrink-0 items-center gap-3 border-b border-gray-100 px-5 py-3">
           <div className="min-w-0 flex-1">
-            <h2 className="truncate font-display text-base font-bold text-runfree-ink">
+            <h2
+              id="preview-title"
+              className="truncate font-display text-base font-bold text-runfree-ink"
+            >
               {file.num && (
                 <span className="mr-2 text-runfree-magentaDeep">{file.num}</span>
               )}
@@ -87,7 +89,7 @@ export default function FilePreview({
           <a
             href={blobUrl || undefined}
             download={`${file.title}.pdf`}
-            className={`shrink-0 rounded-lg bg-runfree-grad px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 ${
+            className={`shrink-0 rounded-lg bg-runfree-grad-deep px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 ${
               blobUrl ? "" : "pointer-events-none opacity-40"
             }`}
           >

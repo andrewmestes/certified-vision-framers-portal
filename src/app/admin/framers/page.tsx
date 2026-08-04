@@ -479,7 +479,7 @@ export default function FramersAdminPage() {
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder="Full name"
                 required
-                className="min-w-[10rem] flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-sm outline-none transition placeholder:text-gray-400 focus:border-runfree-magenta focus:ring-2 focus:ring-runfree-magenta/25"
+                className="min-w-[10rem] flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-sm outline-none transition placeholder:text-gray-500 focus:border-runfree-magenta focus:ring-2 focus:ring-runfree-magenta/25"
               />
               <input
                 value={newEmail}
@@ -487,12 +487,12 @@ export default function FramersAdminPage() {
                 type="email"
                 placeholder="name@church.org"
                 required
-                className="min-w-[14rem] flex-[1.4] rounded-lg border border-gray-300 px-4 py-2.5 text-sm outline-none transition placeholder:text-gray-400 focus:border-runfree-magenta focus:ring-2 focus:ring-runfree-magenta/25"
+                className="min-w-[14rem] flex-[1.4] rounded-lg border border-gray-300 px-4 py-2.5 text-sm outline-none transition placeholder:text-gray-500 focus:border-runfree-magenta focus:ring-2 focus:ring-runfree-magenta/25"
               />
               <button
                 type="submit"
                 disabled={adding}
-                className="rounded-lg bg-runfree-grad px-6 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+                className="rounded-lg bg-runfree-grad-deep px-6 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
               >
                 {adding
                   ? inviteOnAdd
@@ -577,7 +577,7 @@ export default function FramersAdminPage() {
                   rows={6}
                   spellCheck={false}
                   placeholder={"name,email\nJane Smith,jane@church.org\nSam Lee,sam@church.org"}
-                  className="w-full rounded-lg border border-gray-300 px-4 py-3 font-mono text-xs outline-none transition placeholder:text-gray-400 focus:border-runfree-magenta focus:ring-2 focus:ring-runfree-magenta/25"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-3 font-mono text-xs outline-none transition placeholder:text-gray-500 focus:border-runfree-magenta focus:ring-2 focus:ring-runfree-magenta/25"
                 />
 
                 {parsed && (
@@ -599,7 +599,7 @@ export default function FramersAdminPage() {
                   <button
                     onClick={runImport}
                     disabled={!parsed || parsed.rows.length === 0 || importing}
-                    className="rounded-lg bg-runfree-grad px-6 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-40"
+                    className="rounded-lg bg-runfree-grad-deep px-6 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-40"
                   >
                     {importing
                       ? "Importing…"
@@ -665,7 +665,7 @@ export default function FramersAdminPage() {
                               key={`${r.row}-${r.email}`}
                               className="flex items-center gap-3 px-4 py-2"
                             >
-                              <span className="w-12 shrink-0 text-xs text-gray-400">
+                              <span className="w-12 shrink-0 text-xs text-gray-500">
                                 Row {r.row}
                               </span>
                               <span className="min-w-0 flex-1 truncate text-gray-600">
@@ -691,7 +691,7 @@ export default function FramersAdminPage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by name or email…"
-            className="w-full max-w-xs rounded-lg border border-gray-300 px-4 py-2.5 text-sm outline-none transition placeholder:text-gray-400 focus:border-runfree-magenta focus:ring-2 focus:ring-runfree-magenta/25"
+            className="w-full max-w-xs rounded-lg border border-gray-300 px-4 py-2.5 text-sm outline-none transition placeholder:text-gray-500 focus:border-runfree-magenta focus:ring-2 focus:ring-runfree-magenta/25"
           />
 
           <div className="flex flex-wrap gap-2">
@@ -709,7 +709,7 @@ export default function FramersAdminPage() {
                 aria-pressed={statusFilter === key}
                 className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
                   statusFilter === key
-                    ? "bg-runfree-grad text-white shadow-sm"
+                    ? "bg-runfree-grad-deep text-white shadow-sm"
                     : "bg-white text-gray-600 ring-1 ring-gray-200 hover:ring-runfree-magenta/40"
                 }`}
               >
@@ -777,7 +777,7 @@ export default function FramersAdminPage() {
                           {f.name}
                         </span>
                         {isSelf && (
-                          <span className="text-xs text-gray-400">(you)</span>
+                          <span className="text-xs text-gray-500">(you)</span>
                         )}
                       </div>
                       <div className="text-sm text-gray-500">{f.email}</div>
@@ -797,7 +797,7 @@ export default function FramersAdminPage() {
                           Admin
                         </span>
                       ) : (
-                        <span className="text-xs text-gray-400">Framer</span>
+                        <span className="text-xs text-gray-500">Framer</span>
                       )}
                     </span>
 

@@ -76,7 +76,7 @@ export function Field({
         autoComplete={autoComplete}
         onChange={(e) => onChange(e.target.value)}
         required
-        className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-runfree-magenta focus:ring-2 focus:ring-runfree-magenta/25"
+        className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 outline-none transition placeholder:text-gray-500 focus:border-runfree-magenta focus:ring-2 focus:ring-runfree-magenta/25"
       />
     </div>
   );
@@ -95,7 +95,7 @@ export function SubmitButton({
     <button
       type="submit"
       disabled={loading}
-      className="w-full rounded-lg bg-runfree-grad px-4 py-2.5 font-semibold text-white shadow-sm transition hover:opacity-90 disabled:opacity-50"
+      className="w-full rounded-lg bg-runfree-grad-deep px-4 py-2.5 font-semibold text-white shadow-sm transition hover:opacity-90 disabled:opacity-50"
     >
       {loading ? busyLabel : idleLabel}
     </button>
@@ -145,7 +145,7 @@ export function OrDivider() {
   return (
     <div className="my-6 flex items-center gap-3">
       <span className="h-px flex-1 bg-gray-200" />
-      <span className="text-xs font-medium uppercase tracking-wide text-gray-400">
+      <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
         or
       </span>
       <span className="h-px flex-1 bg-gray-200" />

@@ -215,7 +215,7 @@ export default function ResourcesPage() {
             </p>
             <button
               onClick={handleSignOut}
-              className="mt-6 w-full rounded-lg bg-runfree-grad px-4 py-2.5 font-medium text-white transition hover:opacity-90"
+              className="mt-6 w-full rounded-lg bg-runfree-grad-deep px-4 py-2.5 font-medium text-white transition hover:opacity-90"
             >
               Sign out
             </button>
@@ -262,7 +262,7 @@ export default function ResourcesPage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search all handouts…"
-            className="w-full max-w-sm rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm outline-none transition placeholder:text-gray-400 focus:border-runfree-magenta focus:ring-2 focus:ring-runfree-magenta/25"
+            className="w-full max-w-sm rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm outline-none transition placeholder:text-gray-500 focus:border-runfree-magenta focus:ring-2 focus:ring-runfree-magenta/25"
           />
           <span className="text-sm text-gray-500">
             {total} {total === 1 ? "handout" : "handouts"}
@@ -346,7 +346,7 @@ export default function ResourcesPage() {
                           {file.label}
                         </span>
 
-                        <span className="hidden shrink-0 text-xs text-gray-400 sm:inline">
+                        <span className="hidden shrink-0 text-xs text-gray-500 sm:inline">
                           {prettySize(file.sizeBytes)}
                         </span>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
@@ -9,6 +9,7 @@ import { parseVideoUrl, splitVideoMeta } from "@/lib/video";
 import { isProcessModule, stripModuleNumber } from "@/lib/modules";
 import PortalHeader from "@/components/PortalHeader";
 import PageLoader from "@/components/PageLoader";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 import AccessError from "@/components/AccessError";
 import PortalFooter from "@/components/PortalFooter";
 
@@ -53,6 +54,7 @@ export default function VideosPage() {
   >("checking");
   const [loadError, setLoadError] = useState("");
   const [playing, setPlaying] = useState<Video | null>(null);
+  const playerRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
   const router = useRouter();
 
@@ -111,17 +113,8 @@ export default function VideosPage() {
     if (status === "denied") router.replace("/");
   }, [status, router]);
 
-  // Close the player on Escape
-  useEffect(() => {
-    if (!playing) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setPlaying(null);
-    window.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
-    };
-  }, [playing]);
+  const closePlayer = useCallback(() => setPlaying(null), []);
+  useFocusTrap(playerRef, closePlayer, Boolean(playing));
 
   async function handleSignOut() {
     await logout();
@@ -202,7 +195,7 @@ export default function VideosPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search videos…"
-              className="w-full max-w-sm rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm outline-none transition placeholder:text-gray-400 focus:border-runfree-magenta focus:ring-2 focus:ring-runfree-magenta/25"
+              className="w-full max-w-sm rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm outline-none transition placeholder:text-gray-500 focus:border-runfree-magenta focus:ring-2 focus:ring-runfree-magenta/25"
             />
             <span className="text-sm text-gray-500">
               {total} {total === 1 ? "video" : "videos"}
@@ -300,12 +293,20 @@ export default function VideosPage() {
           onClick={() => setPlaying(null)}
         >
           <div
-            className="w-full max-w-4xl overflow-hidden rounded-2xl bg-black shadow-2xl"
+            ref={playerRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="player-title"
+            tabIndex={-1}
+            className="w-full max-w-4xl overflow-hidden rounded-2xl bg-black shadow-2xl outline-none"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="h-1.5 bg-runfree-grad" />
             <div className="flex items-center justify-between gap-3 bg-white px-5 py-3">
-              <h3 className="min-w-0 truncate font-display text-base font-semibold text-runfree-ink">
+              <h3
+                id="player-title"
+                className="min-w-0 truncate font-display text-base font-semibold text-runfree-ink"
+              >
                 {playing.title}
               </h3>
               <div className="flex shrink-0 items-center gap-3">

@@ -170,7 +170,7 @@ export default function ModuleNav({
                   aria-pressed={isActive}
                   className={`rounded-full px-4 py-2 text-sm font-medium transition ${
                     isActive
-                      ? "bg-runfree-grad text-white shadow-sm"
+                      ? "bg-runfree-grad-deep text-white shadow-sm"
                       : isFieldGuide
                         ? "bg-runfree-pink text-runfree-magentaDeep ring-1 ring-runfree-magenta/40 hover:ring-runfree-magenta/70"
                         : "bg-white text-gray-600 ring-1 ring-gray-200 hover:ring-runfree-magenta/40"
@@ -183,7 +183,7 @@ export default function ModuleNav({
                         ? "text-white/80"
                         : isFieldGuide
                           ? "text-runfree-magentaDeep/60"
-                          : "text-gray-400"
+                          : "text-gray-500"
                     }`}
                   >
                     {m.count}

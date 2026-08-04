@@ -34,7 +34,7 @@ export default function AccessError({
           </p>
           <button
             onClick={onRetry}
-            className="mt-6 w-full rounded-lg bg-runfree-grad px-4 py-2.5 font-medium text-white outline-none ring-runfree-magenta/60 transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-offset-2"
+            className="mt-6 w-full rounded-lg bg-runfree-grad-deep px-4 py-2.5 font-medium text-white outline-none ring-runfree-magenta/60 transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-offset-2"
           >
             Try again
           </button>
@@ -48,7 +48,7 @@ export default function AccessError({
             </a>
           </p>
           {detail && (
-            <p className="mt-3 break-words text-[11px] text-gray-400">
+            <p className="mt-3 break-words text-[11px] text-gray-500">
               {detail}
             </p>
           )}
