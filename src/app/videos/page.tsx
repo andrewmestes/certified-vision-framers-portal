@@ -9,6 +9,7 @@ import { parseVideoUrl, splitVideoMeta } from "@/lib/video";
 import { isProcessModule, stripModuleNumber } from "@/lib/modules";
 import PortalHeader from "@/components/PortalHeader";
 import PageLoader from "@/components/PageLoader";
+import AccessError from "@/components/AccessError";
 import PortalFooter from "@/components/PortalFooter";
 
 type Framer = {
@@ -47,9 +48,9 @@ function leadingNumber(name: string): number {
 export default function VideosPage() {
   const [framer, setFramer] = useState<Framer | null>(null);
   const [videos, setVideos] = useState<Video[]>([]);
-  const [status, setStatus] = useState<"checking" | "denied" | "ready">(
-    "checking"
-  );
+  const [status, setStatus] = useState<
+    "checking" | "denied" | "ready" | "error"
+  >("checking");
   const [loadError, setLoadError] = useState("");
   const [playing, setPlaying] = useState<Video | null>(null);
   const [query, setQuery] = useState("");
@@ -92,7 +93,13 @@ export default function VideosPage() {
       setStatus("ready");
     }
 
-    init();
+    init().catch((err) => {
+
+      console.error("Videos init failed:", err);
+
+      setStatus("error");
+
+    });
   }, [router]);
 
   /**
@@ -163,6 +170,10 @@ export default function VideosPage() {
   }, [videos, needle]);
 
   const total = groups.reduce((n, g) => n + g.videos.length, 0);
+
+  if (status === "error") {
+    return <AccessError onRetry={() => window.location.reload()} />;
+  }
 
   if (status === "checking" || status === "denied") {
     return <PageLoader label="Checking your access…" />;

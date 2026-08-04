@@ -40,14 +40,22 @@ function pick(payload: Record<string, unknown>, keys: string[]): string {
  * silently falls through to the add path — reproduced directly by sending a
  * payload shaped this way and getting "already_present" back for what should
  * have been a removal.
+ *
+ * Custom Data is merged UNDER the standard fields, never over them. A pair
+ * named `email` is a mistake someone can make in the GHL UI, and letting it
+ * win would point a revoke at a different person than the one the workflow
+ * actually fired for — the contact's own identity has to come from GHL's
+ * standard payload, not from a field an admin typed.
  */
 function flattenCustomData(
   payload: Record<string, unknown>
 ): Record<string, unknown> {
   const nested = payload.customData ?? payload.custom_data;
 
+  let flat: Record<string, unknown> | null = null;
+
   if (Array.isArray(nested)) {
-    const flat: Record<string, unknown> = {};
+    flat = {};
     for (const entry of nested) {
       if (entry && typeof entry === "object") {
         const key = (entry as { key?: unknown; name?: unknown }).key
@@ -57,14 +65,14 @@ function flattenCustomData(
         }
       }
     }
-    return { ...payload, ...flat };
+  } else if (nested && typeof nested === "object") {
+    flat = { ...(nested as Record<string, unknown>) };
   }
 
-  if (nested && typeof nested === "object") {
-    return { ...payload, ...(nested as Record<string, unknown>) };
-  }
+  if (!flat) return payload;
 
-  return payload;
+  // Identity fields are GHL's to state, so they are re-applied last.
+  return { ...flat, ...payload };
 }
 
 export async function POST(req: NextRequest) {
@@ -117,10 +125,50 @@ export async function POST(req: NextRequest) {
 
   try {
     if (action === "remove") {
-      await supabaseAdmin
+      /**
+       * Admins are never revoked by a CRM tag. Someone can untag a contact in
+       * GHL for reasons that have nothing to do with portal access, and losing
+       * the last admin means losing the only way back into the admin screen —
+       * a re-add wouldn't restore it either, since an insert doesn't carry
+       * is_admin. Revoking an admin is a deliberate act, done in the portal.
+       */
+      const { data: target, error: lookupErr } = await supabaseAdmin
+        .from("certified_framers")
+        .select("id,is_admin")
+        .eq("email", email)
+        .maybeSingle();
+
+      if (lookupErr) throw new Error(lookupErr.message);
+
+      if (!target) {
+        await supabaseAdmin.from("ghl_sync_log").insert({
+          ghl_contact_id: contactId || email,
+          status: "success",
+        });
+        return NextResponse.json({ ok: true, action: "not_listed", email });
+      }
+
+      if (target.is_admin) {
+        await supabaseAdmin.from("ghl_sync_log").insert({
+          ghl_contact_id: contactId || email,
+          status: "failed",
+          error_message: `Refused to revoke admin ${email} from a GHL tag removal`,
+        });
+        return NextResponse.json({
+          ok: true,
+          action: "refused_admin",
+          email,
+          warning:
+            "This person is a portal admin. Remove their admin rights in the portal first if you really mean to revoke access.",
+        });
+      }
+
+      const { error: deleteErr } = await supabaseAdmin
         .from("certified_framers")
         .delete()
         .eq("email", email);
+
+      if (deleteErr) throw new Error(deleteErr.message);
 
       await supabaseAdmin.from("ghl_sync_log").insert({
         ghl_contact_id: contactId || email,
@@ -130,27 +178,33 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, action: "removed", email });
     }
 
-    const { data: existing } = await supabaseAdmin
+    const { data: existing, error: existingErr } = await supabaseAdmin
       .from("certified_framers")
       .select("id")
       .eq("email", email)
       .maybeSingle();
 
+    if (existingErr) throw new Error(existingErr.message);
+
     if (existing) {
       // Already on the list — just keep the GHL link current. Never
       // overwrite an existing name or touch is_admin.
       if (contactId) {
-        await supabaseAdmin
+        const { error: linkErr } = await supabaseAdmin
           .from("certified_framers")
           .update({ ghl_contact_id: contactId })
           .eq("id", existing.id);
+        if (linkErr) throw new Error(linkErr.message);
       }
     } else {
-      await supabaseAdmin.from("certified_framers").insert({
-        email,
-        name: fullName || email,
-        ghl_contact_id: contactId || null,
-      });
+      const { error: insertErr } = await supabaseAdmin
+        .from("certified_framers")
+        .insert({
+          email,
+          name: fullName || email,
+          ghl_contact_id: contactId || null,
+        });
+      if (insertErr) throw new Error(insertErr.message);
     }
 
     /**

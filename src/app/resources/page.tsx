@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { getCurrentFramer, logout } from "@/lib/auth";
 import PortalHeader from "@/components/PortalHeader";
 import PageLoader from "@/components/PageLoader";
+import AccessError from "@/components/AccessError";
 import PortalFooter from "@/components/PortalFooter";
 import ModuleNav from "@/components/ModuleNav";
 import FilePreview, { PreviewFile } from "@/components/FilePreview";
@@ -43,9 +44,9 @@ function prettySize(bytes: number | null) {
 export default function ResourcesPage() {
   const [framer, setFramer] = useState<Framer | null>(null);
   const [modules, setModules] = useState<PortalModule[]>([]);
-  const [status, setStatus] = useState<"checking" | "denied" | "ready">(
-    "checking"
-  );
+  const [status, setStatus] = useState<
+    "checking" | "denied" | "ready" | "error"
+  >("checking");
   const [loadError, setLoadError] = useState("");
   const [query, setQuery] = useState("");
   /** Empty means no module chosen — everything shows. */
@@ -105,7 +106,10 @@ export default function ResourcesPage() {
       await loadLibrary();
       setStatus("ready");
     }
-    init();
+    init().catch((err) => {
+      console.error("Handouts init failed:", err);
+      setStatus("error");
+    });
   }, [router, loadLibrary]);
 
   async function handleSignOut() {
@@ -188,6 +192,10 @@ export default function ResourcesPage() {
     .filter((m) => m.files.length > 0);
 
   const total = visible.reduce((n, m) => n + m.files.length, 0);
+
+  if (status === "error") {
+    return <AccessError onRetry={() => window.location.reload()} />;
+  }
 
   if (status === "checking") return <PageLoader label="Checking your access…" />;
 

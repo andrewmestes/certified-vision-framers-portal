@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { getCurrentFramer, logout } from "@/lib/auth";
 import PortalHeader from "@/components/PortalHeader";
 import PageLoader from "@/components/PageLoader";
+import AccessError from "@/components/AccessError";
 import PortalFooter from "@/components/PortalFooter";
 import FilePreview, { PreviewFile } from "@/components/FilePreview";
 import PdfThumbnail from "@/components/PdfThumbnail";
@@ -84,9 +85,9 @@ function prettySize(bytes: number | null) {
 export default function BooksPage() {
   const [framer, setFramer] = useState<Framer | null>(null);
   const [library, setLibrary] = useState<BooksLibrary>({ books: [], extras: [] });
-  const [status, setStatus] = useState<"checking" | "denied" | "ready">(
-    "checking"
-  );
+  const [status, setStatus] = useState<
+    "checking" | "denied" | "ready" | "error"
+  >("checking");
   const [loadError, setLoadError] = useState("");
   const [activeId, setActiveId] = useState<string>("");
   const [preview, setPreview] = useState<PreviewFile | null>(null);
@@ -135,7 +136,10 @@ export default function BooksPage() {
       await load();
       setStatus("ready");
     }
-    init();
+    init().catch((err) => {
+      console.error("Books init failed:", err);
+      setStatus("error");
+    });
   }, [router, load]);
 
   /**
@@ -193,6 +197,10 @@ export default function BooksPage() {
     },
     []
   );
+
+  if (status === "error") {
+    return <AccessError onRetry={() => window.location.reload()} />;
+  }
 
   if (status === "checking" || status === "denied") {
     return <PageLoader label="Checking your access…" />;

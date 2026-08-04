@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getCurrentFramer, logout } from "@/lib/auth";
 import PortalHeader from "@/components/PortalHeader";
+import AccessError from "@/components/AccessError";
 import { parseCsv } from "@/lib/csv";
 
 type ImportRowResult = {
@@ -68,6 +69,9 @@ export default function FramersAdminPage() {
   const [framers, setFramers] = useState<Framer[]>([]);
   const [ghlConfigured, setGhlConfigured] = useState(false);
   const [loading, setLoading] = useState(true);
+  // Set when init() throws outright, so the page stops on a retry screen
+  // instead of sitting on its loader with nothing left to set it false.
+  const [fatal, setFatal] = useState(false);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<AccountStatus | "all">("all");
   const [sortKey, setSortKey] = useState<SortKey>("added");
@@ -141,7 +145,11 @@ export default function FramersAdminPage() {
       setLoading(false);
     }
 
-    init();
+    init().catch((err) => {
+      console.error("Admin framers init failed:", err);
+      setFatal(true);
+      setLoading(false);
+    });
   }, [router, load]);
 
   async function handleSignOut() {
@@ -190,6 +198,12 @@ export default function FramersAdminPage() {
       setNewEmail("");
       setNewName("");
       await load();
+    } catch (err) {
+      setError(
+        err instanceof Error && err.message !== "No session"
+          ? err.message
+          : "Something went wrong. Check your connection and try again."
+      );
     } finally {
       setAdding(false);
     }
@@ -212,6 +226,12 @@ export default function FramersAdminPage() {
       }
 
       await load();
+    } catch (err) {
+      setError(
+        err instanceof Error && err.message !== "No session"
+          ? err.message
+          : "Something went wrong. Check your connection and try again."
+      );
     } finally {
       setBusyId(null);
     }
@@ -245,6 +265,12 @@ export default function FramersAdminPage() {
           : `Confirmation email resent to ${f.email}.`
       );
       await load();
+    } catch (err) {
+      setError(
+        err instanceof Error && err.message !== "No session"
+          ? err.message
+          : "Something went wrong. Check your connection and try again."
+      );
     } finally {
       setSendingId(null);
     }
@@ -270,6 +296,12 @@ export default function FramersAdminPage() {
       if (body.warning) setWarning(body.warning);
       setConfirmId(null);
       await load();
+    } catch (err) {
+      setError(
+        err instanceof Error && err.message !== "No session"
+          ? err.message
+          : "Something went wrong. Check your connection and try again."
+      );
     } finally {
       setBusyId(null);
     }
@@ -314,6 +346,12 @@ export default function FramersAdminPage() {
         `${body.summary.added} added from ${body.summary.total} row${body.summary.total === 1 ? "" : "s"}.`
       );
       await load();
+    } catch (err) {
+      setError(
+        err instanceof Error && err.message !== "No session"
+          ? err.message
+          : "Something went wrong. Check your connection and try again."
+      );
     } finally {
       setImporting(false);
     }
@@ -376,6 +414,10 @@ export default function FramersAdminPage() {
       }
     });
   }, [framers, query, statusFilter, sortKey, sortDir]);
+
+  if (fatal) {
+    return <AccessError onRetry={() => window.location.reload()} />;
+  }
 
   if (loading) {
     return (

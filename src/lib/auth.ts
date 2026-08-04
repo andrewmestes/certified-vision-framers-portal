@@ -7,19 +7,37 @@ export async function getCurrentUser() {
   return user;
 }
 
+/**
+ * Thrown when we genuinely could not find out whether someone has access,
+ * as opposed to finding out that they don't.
+ *
+ * Those two need to look different to the caller: "you aren't on the list"
+ * is a real answer worth showing the access-pending screen for, while a
+ * dropped connection is not. Collapsing both to null told certified framers
+ * their access was pending because their wifi hiccuped.
+ */
+export class FramerLookupError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "FramerLookupError";
+  }
+}
+
 export async function getCurrentFramer() {
   const user = await getCurrentUser();
   if (!user) return null;
 
+  // maybeSingle, not single: "no row" is an ordinary answer here, and single()
+  // reports it as an error, which is what made the two cases indistinguishable.
   const { data, error } = await supabase
     .from("certified_framers")
     .select("*")
     .eq("email", user.email)
-    .single();
+    .maybeSingle();
 
   if (error) {
     console.error("Error fetching framer:", error);
-    return null;
+    throw new FramerLookupError(error.message);
   }
 
   return data;

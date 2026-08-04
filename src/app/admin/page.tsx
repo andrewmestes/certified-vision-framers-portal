@@ -6,6 +6,7 @@ import Image from "next/image";
 import { getCurrentFramer, logout } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import PortalHeader from "@/components/PortalHeader";
+import AccessError from "@/components/AccessError";
 
 type Framer = {
   id: string;
@@ -24,6 +25,9 @@ type ModuleSummary = {
 export default function AdminDashboard() {
   const [framer, setFramer] = useState<Framer | null>(null);
   const [loading, setLoading] = useState(true);
+  // Set when init() throws outright, so the page stops on a retry screen
+  // instead of sitting on its loader with nothing left to set it false.
+  const [fatal, setFatal] = useState(false);
   const [framerCount, setFramerCount] = useState(0);
   const [downloads, setDownloads] = useState(0);
   const [modules, setModules] = useState<ModuleSummary[]>([]);
@@ -69,12 +73,24 @@ export default function AdminDashboard() {
       setLoading(false);
     }
 
-    init();
+    init().catch((err) => {
+
+      console.error("Admin init failed:", err);
+
+      setFatal(true);
+
+      setLoading(false);
+
+    });
   }, [router]);
 
   async function handleSignOut() {
     await logout();
     router.replace("/auth/login");
+  }
+
+  if (fatal) {
+    return <AccessError onRetry={() => window.location.reload()} />;
   }
 
   if (loading) {

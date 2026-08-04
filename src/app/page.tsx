@@ -7,6 +7,7 @@ import { getCurrentFramer, logout } from "@/lib/auth";
 import PortalHeader from "@/components/PortalHeader";
 import PageLoader from "@/components/PageLoader";
 import PortalFooter from "@/components/PortalFooter";
+import AccessError from "@/components/AccessError";
 
 type Framer = {
   id: string;
@@ -17,9 +18,9 @@ type Framer = {
 
 export default function HubPage() {
   const [framer, setFramer] = useState<Framer | null>(null);
-  const [status, setStatus] = useState<"checking" | "denied" | "ready">(
-    "checking"
-  );
+  const [status, setStatus] = useState<
+    "checking" | "denied" | "ready" | "error"
+  >("checking");
   const router = useRouter();
 
   useEffect(() => {
@@ -56,23 +57,30 @@ export default function HubPage() {
     unsubscribe = () => sub.subscription.unsubscribe();
 
     async function init() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      // Any throw in here used to leave the page on its loading bar forever,
+      // since nothing downstream ever set a terminal state.
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
 
-      if (!user) {
-        router.replace("/auth/login");
-        return;
+        if (!user) {
+          router.replace("/auth/login");
+          return;
+        }
+
+        const current = (await getCurrentFramer()) as Framer | null;
+        if (!current) {
+          setStatus("denied");
+          return;
+        }
+
+        setFramer(current);
+        setStatus("ready");
+      } catch (err) {
+        console.error("Hub init failed:", err);
+        setStatus("error");
       }
-
-      const current = (await getCurrentFramer()) as Framer | null;
-      if (!current) {
-        setStatus("denied");
-        return;
-      }
-
-      setFramer(current);
-      setStatus("ready");
     }
     init();
 
@@ -85,6 +93,10 @@ export default function HubPage() {
   }
 
   if (status === "checking") return <PageLoader label="Checking your access…" />;
+
+  if (status === "error") {
+    return <AccessError onRetry={() => window.location.reload()} />;
+  }
 
   if (status === "denied") {
     return (

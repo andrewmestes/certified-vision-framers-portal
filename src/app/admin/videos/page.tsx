@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { getCurrentFramer, logout } from "@/lib/auth";
 import { parseVideoUrl, PROVIDER_LABEL } from "@/lib/video";
 import PortalHeader from "@/components/PortalHeader";
+import AccessError from "@/components/AccessError";
 import { Field, FormError, FormNotice } from "@/components/AuthShell";
 
 type Framer = {
@@ -30,6 +31,9 @@ export default function AdminVideosPage() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [modules, setModules] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  // Set when init() throws outright, so the page stops on a retry screen
+  // instead of sitting on its loader with nothing left to set it false.
+  const [fatal, setFatal] = useState(false);
 
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
@@ -79,7 +83,11 @@ export default function AdminVideosPage() {
 
       setLoading(false);
     }
-    init();
+    init().catch((err) => {
+      console.error("Admin videos init failed:", err);
+      setFatal(true);
+      setLoading(false);
+    });
   }, [router, load]);
 
   async function handleSignOut() {
@@ -140,6 +148,10 @@ export default function AdminVideosPage() {
     await supabase.from("training_videos").delete().eq("id", v.id);
     setConfirmId(null);
     await load();
+  }
+
+  if (fatal) {
+    return <AccessError onRetry={() => window.location.reload()} />;
   }
 
   if (loading) {

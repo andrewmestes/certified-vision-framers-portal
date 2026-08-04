@@ -80,7 +80,7 @@ GHL_CUSTOM_FIELD_ID=your-field-id
    npx supabase db push
    ```
 
-### 5. Add Initial Certified Framers
+### 5. Add Initial Certified Vision Framers
 
 In Supabase dashboard:
 1. Go to Tables → `certified_framers`

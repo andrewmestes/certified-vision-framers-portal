@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getCurrentFramer, logout, updatePassword } from "@/lib/auth";
 import PortalHeader from "@/components/PortalHeader";
+import AccessError from "@/components/AccessError";
 import { Field, FormError, FormNotice } from "@/components/AuthShell";
 
 type Framer = {
@@ -17,6 +18,9 @@ type Framer = {
 export default function AccountPage() {
   const [framer, setFramer] = useState<Framer | null>(null);
   const [loading, setLoading] = useState(true);
+  // Set when init() throws outright, so the page stops on a retry screen
+  // instead of sitting on its loader with nothing left to set it false.
+  const [fatal, setFatal] = useState(false);
   /** Google users have no password to change. */
   const [isPasswordUser, setIsPasswordUser] = useState(true);
 
@@ -55,7 +59,15 @@ export default function AccountPage() {
       setLoading(false);
     }
 
-    init();
+    init().catch((err) => {
+
+      console.error("Account init failed:", err);
+
+      setFatal(true);
+
+      setLoading(false);
+
+    });
   }, [router]);
 
   async function handleSignOut() {
@@ -90,6 +102,10 @@ export default function AccountPage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  if (fatal) {
+    return <AccessError onRetry={() => window.location.reload()} />;
   }
 
   if (loading) {

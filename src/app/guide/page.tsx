@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { getCurrentFramer, logout } from "@/lib/auth";
 import PortalHeader from "@/components/PortalHeader";
 import PageLoader from "@/components/PageLoader";
+import AccessError from "@/components/AccessError";
 import PortalFooter from "@/components/PortalFooter";
 import FilePreview, { PreviewFile } from "@/components/FilePreview";
 import PdfThumbnail from "@/components/PdfThumbnail";
@@ -38,9 +39,9 @@ function prettyDate(iso: string | null) {
 export default function GuidePage() {
   const [framer, setFramer] = useState<Framer | null>(null);
   const [file, setFile] = useState<GuideFile | null>(null);
-  const [status, setStatus] = useState<"checking" | "denied" | "ready">(
-    "checking"
-  );
+  const [status, setStatus] = useState<
+    "checking" | "denied" | "ready" | "error"
+  >("checking");
   const [loadError, setLoadError] = useState("");
   const [preview, setPreview] = useState<PreviewFile | null>(null);
   const router = useRouter();
@@ -79,7 +80,10 @@ export default function GuidePage() {
 
       setStatus("ready");
     }
-    init();
+    init().catch((err) => {
+      console.error("Guide init failed:", err);
+      setStatus("error");
+    });
   }, [router]);
 
   /**
@@ -131,6 +135,10 @@ export default function GuidePage() {
         : new Blob([blob], { type: "application/pdf" })
     );
   }, []);
+
+  if (status === "error") {
+    return <AccessError onRetry={() => window.location.reload()} />;
+  }
 
   if (status === "checking" || status === "denied") {
     return <PageLoader label="Checking your access…" />;

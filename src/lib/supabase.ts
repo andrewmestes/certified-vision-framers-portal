@@ -7,7 +7,23 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 // Client-side Supabase instance (for browser)
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Server-side Supabase instance (for API routes) - only created if service key exists
+/**
+ * Server-side client for API routes.
+ *
+ * Falling back to the anon client when the service key is missing looks
+ * forgiving and is the opposite. Every server route reads certified_framers to
+ * decide who you are, RLS blocks that read for anon, so the fallback doesn't
+ * degrade anything — it locks out every single user with a 403 and no clue
+ * why, while the deploy reports healthy. A missing service key is a broken
+ * deploy, so say so at import time where it is one obvious line in the Vercel
+ * log, rather than a support ticket from a confused church leader.
+ */
+if (!supabaseServiceKey) {
+  console.error(
+    "SUPABASE_SERVICE_ROLE_KEY is not set. Every gated route will fail its access check and no one will be able to sign in."
+  );
+}
+
 export const supabaseAdmin = supabaseServiceKey
   ? createClient(supabaseUrl, supabaseServiceKey)
   : supabase;
