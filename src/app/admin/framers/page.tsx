@@ -249,7 +249,7 @@ export default function FramersAdminPage() {
         method: "PUT",
         body: JSON.stringify({
           email: f.email,
-          action: invite ? "invite" : "resend",
+          action: invite ? "invite" : "login",
         }),
       });
       const body = await res.json();
@@ -262,7 +262,7 @@ export default function FramersAdminPage() {
       flash(
         invite
           ? `Invite sent to ${f.email}.`
-          : `Confirmation email resent to ${f.email}.`
+          : `Password link sent to ${f.email} — they can set or reset their password with it.`
       );
       await load();
     } catch (err) {
@@ -817,7 +817,7 @@ export default function FramersAdminPage() {
                           title={
                             f.accountStatus === "no_account"
                               ? "Email them an invite to join the portal"
-                              : "Re-send the signup confirmation email"
+                              : "Email a link they can use to set or reset their password"
                           }
                           className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-runfree-magentaDeep ring-1 ring-runfree-magenta/30 transition hover:bg-runfree-pink/40 disabled:opacity-50"
                         >
@@ -825,7 +825,7 @@ export default function FramersAdminPage() {
                             ? "Sending…"
                             : f.accountStatus === "no_account"
                               ? "Invite"
-                              : "Resend"}
+                              : "Password link"}
                         </button>
                       )}
 
@@ -880,9 +880,11 @@ export default function FramersAdminPage() {
 
         <p className="mt-4 text-xs leading-relaxed text-gray-500">
           <strong className="font-semibold text-gray-600">Invite</strong> emails
-          someone who has never created a login;{" "}
-          <strong className="font-semibold text-gray-600">Resend</strong> re-sends
-          the confirmation to someone who started but never clicked the link.
+          someone who has never created a login.{" "}
+          <strong className="font-semibold text-gray-600">Password link</strong>{" "}
+          is for everyone else — it lets someone who was invited but never
+          finished set a first password, and someone already signed up reset a
+          forgotten one.
           Removing someone revokes portal access immediately but leaves their
           login intact, so re-adding them later just works. To delete an account
           outright, use Authentication → Users in Supabase.

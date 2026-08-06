@@ -111,16 +111,26 @@ export async function GET(req: NextRequest) {
 }
 
 /**
- * PUT — nudge someone by email.
+ * PUT — email someone a way in.
  *
- * Two different situations need two different emails, which is why this
- * takes an action rather than assuming one:
+ * Two situations, two mechanisms:
  *
- *   resend — they started signing up but never clicked the confirmation
- *            link. Re-sends the same "Confirm signup" template.
- *   invite — they're on the allowlist but have never created a login at
- *            all, so there is no signup to confirm and `resend` would fail.
- *            Sends Supabase's invite email instead.
+ *   invite — no login exists yet. Supabase's invite email, which is also what
+ *            adding someone sends automatically.
+ *   login  — a login already exists. Sends a password link.
+ *
+ * The second used to call resend({type:"signup"}), which was wrong in both of
+ * the cases it could actually be reached in. Nobody self-signs up here (that
+ * is off in Supabase), so there is never a pending signup to confirm: an
+ * invited person has an invite, not a signup, and a confirmed person has
+ * nothing outstanding at all. GoTrue answers 200 either way and sends nothing.
+ * Verified against production — a "successful" resend to a confirmed account
+ * left confirmation_sent_at null and no mail arrived, while the admin was told
+ * it had been sent.
+ *
+ * A password link is the honest answer for both. Someone invited but never
+ * finished uses it to set a first password; someone locked out uses it to
+ * reset. Same email, and it genuinely sends.
  */
 export async function PUT(req: NextRequest) {
   const caller = await requireAdmin(req);
@@ -128,16 +138,16 @@ export async function PUT(req: NextRequest) {
 
   const { email, action } = await req.json();
   const cleanEmail = String(email || "").trim().toLowerCase();
-  const mode = action === "invite" ? "invite" : "resend";
+  // "resend" is still accepted so an old open tab doesn't 400.
+  const mode = action === "invite" ? "invite" : "login";
 
   if (!cleanEmail) {
     return NextResponse.json({ error: "Missing email" }, { status: 400 });
   }
 
+  const origin = req.nextUrl.origin;
+
   if (mode === "invite") {
-    // Land them on the callback route, which establishes the session and
-    // sends them into the portal; they can set a password from Account.
-    const origin = req.nextUrl.origin;
     const { error } = await supabaseAdmin.auth.admin.inviteUserByEmail(
       cleanEmail,
       { redirectTo: `${origin}/auth/callback` }
@@ -150,18 +160,15 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ ok: true, sent: "invite" });
   }
 
-  // Public GoTrue endpoint (no admin key needed) — it re-sends whatever
-  // template is configured for "Confirm signup", same as a fresh signup would.
-  const { error } = await supabase.auth.resend({
-    type: "signup",
-    email: cleanEmail,
+  const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+    redirectTo: `${origin}/auth/reset-password`,
   });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, sent: "confirmation" });
+  return NextResponse.json({ ok: true, sent: "login_link" });
 }
 
 /** POST — add someone to the allowlist. */
