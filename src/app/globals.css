@@ -88,3 +88,18 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* iOS Safari zooms the whole page in when you focus a field whose text is
+   under 16px, and does not zoom back out — leaving someone pinching to see
+   the rest of the page after typing one search term. Several fields sit at
+   14px for density on desktop, which is fine there and a nuisance on a phone,
+   so the floor only applies at phone widths. */
+@media (max-width: 640px) {
+  /* [class] lifts this to 0,1,1 so it outranks Tailwind's own text-sm (0,1,0)
+     wherever those fields set a size, without reaching for !important. */
+  input[class],
+  select[class],
+  textarea[class] {
+    font-size: 16px;
+  }
+}

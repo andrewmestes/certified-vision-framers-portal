@@ -18,7 +18,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
  * deploy, so say so at import time where it is one obvious line in the Vercel
  * log, rather than a support ticket from a confused church leader.
  */
-if (!supabaseServiceKey) {
+// Server only. This module is imported from client components too, and the
+// service key is deliberately absent in the browser — warning there would fire
+// on every page load for every user, and claim a broken deploy that isn't.
+if (typeof window === "undefined" && !supabaseServiceKey) {
   console.error(
     "SUPABASE_SERVICE_ROLE_KEY is not set. Every gated route will fail its access check and no one will be able to sign in."
   );
