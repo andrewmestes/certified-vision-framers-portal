@@ -12,34 +12,51 @@ domain — every redirect is built from the incoming request's own origin, so th
 portal follows whatever domain serves it. `NEXT_PUBLIC_APP_URL` exists in some
 older notes but is read by nothing.
 
-That means the whole migration lives in four dashboards, and the failure mode if
-one is missed is specific and worth knowing in advance.
+That means the whole migration lives in a handful of dashboards, and the failure
+mode if one is missed is specific and worth knowing in advance.
 
 ## Do them in this order
 
-### 1. Vercel — add the domain
+### 1. Route 53 — add the CNAME first
 
-Project → Settings → Domains → add `certified.runfree.co`. Vercel gives you a
-CNAME target. Wait for it to verify.
+DNS before Vercel, not after. Vercel refuses to attach a domain it cannot yet
+verify, so adding the record first means the next step succeeds immediately
+instead of sitting in "Invalid Configuration".
 
-**DNS is on AWS Route 53** (nameservers are `ns-*.awsdns-*`), and there is an
-explicit `*.runfree.co` wildcard A record pointing every unclaimed subdomain at
-the Plesk web host. That is fine — a specific record beats a wildcard — but it
-does mean nothing appears broken beforehand: `certified.runfree.co` already
-resolves today, to the wrong place. Create a CNAME for `certified` in the
-runfree.co hosted zone pointing at Vercel's target, and leave the wildcard alone.
+In the `runfree.co` hosted zone, create:
+
+```
+Name:   certified
+Type:   CNAME
+Value:  cname.vercel-dns.com
+TTL:    300
+```
+
+**Leave the `*.runfree.co` wildcard alone.** A specific record beats a wildcard,
+and the wildcard is presumably serving other things.
+
+One thing that will look like a failure and is not: `certified.runfree.co`
+**already resolves today**, to the Plesk web host at `172.239.52.194`, because
+of that wildcard. So there is no "domain not found" stage to wait through — the
+subdomain will serve the wrong page until the CNAME propagates, then the right
+one. Check for the portal, not for an error.
+
+### 2. Vercel — attach the domain
+
+Project → Settings → Domains → add `certified.runfree.co`. With the CNAME
+already in place it verifies straight away.
 
 Both URLs work from here on; the vercel.app one never stops working, which is
 what makes the rest of these safe to do one at a time.
 
-### 2. Supabase — Site URL and redirect allowlist
+### 3. Supabase — Site URL and redirect allowlist
 
 Authentication → URL Configuration.
 
 - **Site URL** → `https://certified.runfree.co`
 - **Redirect URLs** → add `https://certified.runfree.co/**`
 
-Leave the old vercel.app entries in place until step 5. Supabase only honours a
+Leave the old vercel.app entries in place until the last step. Supabase only honours a
 `redirectTo` that appears in this allowlist, and silently falls back to the Site
 URL otherwise.
 
@@ -47,7 +64,7 @@ URL otherwise.
 old domain. They still work, but a new Certified Vision Framer sees a URL that
 doesn't match the one you told them about.
 
-### 3. GoHighLevel — repoint both webhooks
+### 4. GoHighLevel — repoint both webhooks
 
 Automation → Workflows. In **both** "Certified Vision Framer - Tag Added" and
 "Certified Vision Framer - Tag Removed", open the Webhook action and change the
@@ -63,13 +80,13 @@ exactly as they are. Publish each workflow after editing.
 **If you skip this:** nothing breaks. The old URL still resolves. Worth doing
 anyway so there's one domain to reason about.
 
-### 4. Check the email templates
+### 5. Check the email templates
 
 Authentication → Emails. The branded templates use `{{ .ConfirmationURL }}`,
-which Supabase fills in from the Site URL you set in step 2 — so they follow
+which Supabase fills in from the Site URL you set in step 3 — so they follow
 automatically. Only look here if you hardcoded a link into a template.
 
-### 5. Verify, then clean up
+### 6. Verify, then clean up
 
 Before removing the old redirect URLs, confirm the new domain end to end:
 
