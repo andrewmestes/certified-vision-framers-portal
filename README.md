@@ -1,5 +1,10 @@
 # Certified Vision Framers Portal
 
+> **⚠️ Stale — from the initial scaffold (27 Jul), predates the shipped product.**
+> Documents `/api/resources` and `/api/framers`, which do not exist, and env
+> vars the code no longer reads. Not maintained. See `CLAUDE.md` and `docs/`
+> for what is actually true.
+
 A gated web application for RunFree's Certified Vision Framers to access training materials, guides, and resources.
 
 ## Features (MVP)

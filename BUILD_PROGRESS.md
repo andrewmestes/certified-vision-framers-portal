@@ -1,5 +1,10 @@
 # Build Progress Summary
 
+> **⚠️ Stale — from the initial scaffold (27 Jul), predates the shipped product.**
+> Documents `/api/resources` and `/api/framers`, which do not exist, and env
+> vars the code no longer reads. Not maintained. See `CLAUDE.md` and `docs/`
+> for what is actually true.
+
 ## Session: Initial Groundwork Build
 
 **Date:** 2026-07-27  

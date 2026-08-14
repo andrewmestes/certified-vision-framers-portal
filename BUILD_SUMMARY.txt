@@ -2,6 +2,11 @@
   CERTIFIED VISION FRAMERS PORTAL - BUILD SUMMARY
 ═══════════════════════════════════════════════════════════════════════════════
 
+  ** STALE — from the initial scaffold, predates the shipped product. **
+  ** Not maintained. See CLAUDE.md and docs/ for what is actually true. **
+
+═══════════════════════════════════════════════════════════════════════════════
+
 PROJECT CREATED: 2026-07-27
 STATUS: Foundation Complete ✅
 LOCATION: /Users/Revive_Worship/Desktop/ChatGPT:Claude Data/certified-vision-framers-portal

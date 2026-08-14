@@ -1,5 +1,10 @@
 # Quick Start Guide - What's Built So Far
 
+> **⚠️ Stale — from the initial scaffold (27 Jul), predates the shipped product.**
+> Documents `/api/resources` and `/api/framers`, which do not exist, and env
+> vars the code no longer reads. Not maintained. See `CLAUDE.md` and `docs/`
+> for what is actually true.
+
 ## Summary
 
 I've built the **foundation** for the Certified Vision Framers portal while you were away. Here's what's ready to go:
